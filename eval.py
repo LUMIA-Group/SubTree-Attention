@@ -82,11 +82,12 @@ def evaluate(model, dataset, split_idx, eval_func, criterion, args):
 
 
 @torch.no_grad()
-def evaluate_cpu(model, dataset, split_idx, eval_func, criterion, args, result=None):
+def evaluate_cpu(model, dataset, split_idx, eval_func, criterion, args, device, result=None):
     model.eval()
 
-    model.to(torch.device("cpu"))
-    dataset.label = dataset.label.to(torch.device("cpu"))
+    dataset.graph['edge_index'], dataset.graph['node_feat'] = \
+        dataset.graph['edge_index'].to(
+            device), dataset.graph['node_feat'].to(device)
 
     with torch.no_grad():
         out = model(dataset)
