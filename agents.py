@@ -1,17 +1,24 @@
 import os
 import wandb
-from multiprocessing import Process, Queue
+from torch.multiprocessing import Pool, Process,Queue, set_start_method
+try:
+    set_start_method('spawn')
+except RuntimeError:
+    pass
 import time
 from wandb_run import runner
 from sweep import count_sweep, get_timestamp
 import argparse
 import glob
 import tempfile
+import random
+import numpy as np
 
-def agent(entity, project, q, wandb_base, sweep_id, gpu_index, agent_package, code_fullname, save_model):
+
+def agent(entity, project, q, wandb_base, sweep_id, gpu_index, agent_package, code_fullname, save_model,):
     print('Agent started with GPU [%s].'%(gpu_index))
     try:
-        wandb.agent(sweep_id, function=lambda:runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model), entity=entity, project=project, count=agent_package)
+        wandb.agent(sweep_id, function=lambda:runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model,), entity=entity, project=project, count=agent_package)
     except:
         time.sleep(180)
         print('Some error with this agent, skip.')
@@ -80,7 +87,7 @@ if __name__ == '__main__':
         if num_now<num_space:
             gpu_index = q.get()
             if args.mode=='parallel':
-                p = Process(target=agent, args=(args.entity, args.project, q, args.wandb_base, args.sweep_id, gpu_index, agent_package, code_fullname, save_model, ))
+                p = Process(target=agent, args=(args.entity, args.project, q, args.wandb_base, args.sweep_id, gpu_index, agent_package, code_fullname, save_model))
                 p.start()
             elif args.mode=='one-by-one':
                 agent(args.entity, args.project, q, args.wandb_base, args.sweep_id, gpu_index, agent_package, code_fullname, save_model)

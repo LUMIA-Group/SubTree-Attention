@@ -23,7 +23,7 @@ params_config:
   dropout: [0.0]
   lr: [0.001]
   weight_decay: [0.005]
-  epochs: [3000]
+  epochs: [1000]
   eval_step: [1]
   log_freq: [1]
   metric: ["acc"]
@@ -35,8 +35,9 @@ params_config:
   # configs for gnn baseline
   directed: [false]
 
-  # configs for seed
+  # configs for seed and number of runs
   seed: [42]
+  num_runs: [5]
 
 sweep_config:
   method: "grid"

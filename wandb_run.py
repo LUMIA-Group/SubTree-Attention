@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 import importlib
 import os
 import random
@@ -46,7 +47,6 @@ def fixSeed(seed):
 
 
 def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
-
     dir_name = 'remote'
 
     wandb.init(dir=dir_name, reinit=True, group=sweep_id)
@@ -87,16 +87,18 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         dataset.label = dataset.label.to(device)
 
         # get the splits for all runs
-        if params['rand_split']:
-            split_idx_lst = [dataset.get_idx_split(train_prop=params['train_prop'], valid_prop=params['valid_prop'])]
-        elif params['rand_split_class']:
-            split_idx_lst = [dataset.get_idx_split(split_type='class', label_num_per_class=params['label_num_per_class'])]
+        if params['rand_split'] or params['rand_split_class']:
+            rand_split_path = '{}rand_split/{}'.format(params['data_dir'], params['dataset']) if params['rand_split'] else '{}rand_split_class/{}'.format(params['data_dir'], params['dataset'])
+            target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
+            assert os.path.exists(target_rand_split_path)
+            split_idx_lst = torch.load(target_rand_split_path)
         elif params['dataset'] in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
-            split_idx_lst = [dataset.load_fixed_splits()]
+            split_idx_lst = [dataset.load_fixed_splits()
+                            for _ in range(params["num_runs"])]
         else:
             split_idx_lst = load_fixed_splits(
                 params['data_dir'], dataset, name=params['dataset'], protocol=params['protocol'])
-
+            
         # Get num_nodes and num_edges
         n = dataset.graph['num_nodes']
         e = dataset.graph['edge_index'].shape[1]
@@ -104,11 +106,6 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         # Infer the number of classes for non one-hot and one-hot labels and the dimension of input features
         c = max(dataset.label.max().item() + 1, dataset.label.shape[1])
         d = dataset.graph['node_feat'].shape[1]
-
-        # Print basic infomation of the dataset
-        # print()
-        # print(f"dataset {args.dataset} | num nodes {n} | num edge {e} | num node feats {d} | num classes {c}")
-
 
         # Whether or not to symmetrize
         if not params['directed'] and params['dataset'] != 'ogbn-proteins':
@@ -143,13 +140,8 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         print()
         print('MODEL:', model)
 
-
-
-        # best_test_metric = 0
-        # best_val_metric = 0
-        # best_val_loss = 1e10
-
-        run = 0
+        run = params['runs']
+        assert run<len(split_idx_lst)
 
         if params['dataset'] in ['cora', 'citeseer', 'pubmed'] and params['protocol'] == 'semi':
             split_idx = split_idx_lst[0]
@@ -196,11 +188,11 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
                     if params['save_model']:
                         torch.save(model.state_dict(), params['model_dir'] + f'{params["dataset"]}-{params["method"]}.pkl')
 
-                print(f'Epoch: {epoch:02d}, '
-                    f'Loss: {train_loss:.4f}, '
-                    f'Train: {100 * result[0]:.2f}%, '
-                    f'Valid: {100 * result[1]:.2f}%, '
-                    f'Test: {100 * result[2]:.2f}%')
+                # print(f'Epoch: {epoch:02d}, '
+                #     f'Loss: {train_loss:.4f}, '
+                #     f'Train: {100 * result[0]:.2f}%, '
+                #     f'Valid: {100 * result[1]:.2f}%, '
+                #     f'Test: {100 * result[2]:.2f}%')
 
             if epoch % params['log_freq'] == 0:
                 wandb.log({'metric/train': result[0], 'metric/val': result[1], 'metric/test': result[2], 'loss/train': train_loss, 'loss/val': result[3], 'loss/test': result[4]})

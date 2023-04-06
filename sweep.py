@@ -43,10 +43,13 @@ def get_configs_from_file(path_yaml):
     params_config = dict_yaml['params_config']
     search_space = {}
     hash_keys = []
-    for k,v in params_config.items():
+    for k,v in params_config.items():  
         search_space[k] = {"values":v}
         if len(v)>1:
             hash_keys.append(k)
+        if k=='num_runs':
+            assert int(v[0]) > 0
+            search_space['runs'] = {"values":list(range(int(v[0])))}
     search_space['hash_keys'] = {"values":[hash_keys]}
     sweep_config['parameters'] = search_space
     return sweep_config

@@ -1,1 +1,1 @@
-python agents.py --entity=syhuang_sjtu --project=PFGNNTest --sweep_id=jmi6pe0h --gpu_allocate=0:1 --wandb_base=remote --mode=one-by-one --save_model=False
+python agents.py --entity=syhuang_sjtu --project=PFGNNTest --sweep_id=ujzao5jw --gpu_allocate=0:2 --wandb_base=remote --mode=parallel --save_model=False
