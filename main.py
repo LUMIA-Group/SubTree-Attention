@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import random
+import json
 import numpy as np
 import argparse
 from torch_geometric.utils import to_undirected
@@ -176,6 +177,8 @@ for run in range(args.runs):
                 true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
             else:
                 true_label = dataset.label
+            # train_acc = eval_func(
+            #     dataset.label[split_idx['train']], out[split_idx['train']])
             loss = criterion(out[train_idx], true_label.squeeze(1)[
                 train_idx].to(torch.float))
         else:
@@ -188,7 +191,7 @@ for run in range(args.runs):
         
         # Epoch-wise result
         if epoch % args.eval_step == 0:
-            result = evaluate(model, dataset, split_idx, eval_func, criterion, args)
+            result = evaluate(model, dataset, split_idx, eval_func, criterion, args.dataset)
             logger.add_result(run, result[:-1])
 
             if result[1] > best_val:

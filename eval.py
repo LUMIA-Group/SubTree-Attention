@@ -55,7 +55,7 @@ def eval_rocauc(y_true, y_pred):
 
 
 @torch.no_grad()
-def evaluate(model, dataset, split_idx, eval_func, criterion, args):
+def evaluate(model, dataset, split_idx, eval_func, criterion, task):
     model.eval()
     out = model(dataset)
 
@@ -66,19 +66,23 @@ def evaluate(model, dataset, split_idx, eval_func, criterion, args):
     test_acc = eval_func(
         dataset.label[split_idx['test']], out[split_idx['test']])
 
-    if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
+    if task in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
         if dataset.label.shape[1] == 1:
             true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
         else:
             true_label = dataset.label
         valid_loss = criterion(out[split_idx['valid']], true_label.squeeze(1)[
             split_idx['valid']].to(torch.float))
+        test_loss = criterion(out[split_idx['test']], true_label.squeeze(1)[
+            split_idx['test']].to(torch.float))
     else:
         out = F.log_softmax(out, dim=1)
         valid_loss = criterion(
             out[split_idx['valid']], dataset.label.squeeze(1)[split_idx['valid']])
+        test_loss = criterion(
+            out[split_idx['test']], dataset.label.squeeze(1)[split_idx['test']])
 
-    return train_acc, valid_acc, test_acc, valid_loss, out
+    return train_acc, valid_acc, test_acc, valid_loss, test_loss, out
 
 
 @torch.no_grad()

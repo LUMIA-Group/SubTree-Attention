@@ -1,0 +1,45 @@
+params_config:
+  # general configs
+  method: ["pfgnn"] 
+
+  agent_package: [100]
+  ignore_keys: [['seed','index_runs','index_split']]
+  save_model: [false]
+  model_dir: ["../model/"]
+
+  # configs for dataset
+  dataset: ["cora"]
+  sub_dataset: [""] 
+  data_dir: ["../data/"]
+  train_prop: [.5]
+  valid_prop: [.25]
+  protocol: ["semi"]
+  rand_split: [true]
+  rand_split_class: [false]
+  label_num_per_class: [20]
+
+  # configs for model arch and training
+  hidden_channels: [32]
+  dropout: [0.0]
+  lr: [0.001]
+  weight_decay: [0.005]
+  epochs: [3000]
+  eval_step: [1]
+  log_freq: [1]
+  metric: ["acc"]
+
+  # configs for PFGNN
+  K: [10]
+  alpha: [0.1]
+
+  # configs for gnn baseline
+  directed: [false]
+
+  # configs for seed
+  seed: [42]
+
+sweep_config:
+  method: "grid"
+  metric:
+    name: "metric/final"
+    goal: "maximize"
