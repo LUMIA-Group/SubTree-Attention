@@ -1,1 +1,1 @@
-python sweep.py --entity=syhuang_sjtu --project=PFGNNTest --source=file --info=yamls/Cora.yaml
+python sweep.py --entity=syhuang_sjtu --project=PFGNNTest --source=file --info=yamls/cora.yaml

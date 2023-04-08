@@ -17,7 +17,7 @@ import time
 from torch_geometric.utils import to_undirected
 
 from logger import Logger
-from dataset import load_dataset
+from dataset import load_dataset, create_split_idx_lst
 from data_utils import load_fixed_splits
 from pfgnn import PFGT
 from eval import evaluate, eval_acc, eval_rocauc, eval_f1
@@ -73,6 +73,9 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         seed = params['seed']
         # Fix seed
         fixSeed(seed)
+
+        # Create split_idx_lst
+        create_split_idx_lst(params['dataset'])
 
         # Select device
         device = torch.device("cuda:" + str(gpu_index)

@@ -23,7 +23,7 @@ params_config:
   dropout: [0.0]
   lr: [0.001]
   weight_decay: [0.005]
-  epochs: [1000]
+  epochs: [3000]
   eval_step: [1]
   log_freq: [1]
   metric: ["acc"]

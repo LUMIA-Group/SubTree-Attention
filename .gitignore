@@ -4,6 +4,7 @@ __pycache__
 configs/
 remote/
 wandb/
+exp/
 syhuang_sjtu/
 test_func.ipynb
 clean.sh

@@ -1,3 +1,4 @@
+import time
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -165,6 +166,8 @@ for run in range(args.runs):
     optimizer = torch.optim.Adam(model.parameters(),weight_decay=args.weight_decay, lr=args.lr)
     best_val = float('-inf')
 
+    time_start = time.time()
+
     for epoch in range(args.epochs):
         model.train()
         optimizer.zero_grad()
@@ -204,6 +207,9 @@ for run in range(args.runs):
                   f'Train: {100 * result[0]:.2f}%, '
                   f'Valid: {100 * result[1]:.2f}%, '
                   f'Test: {100 * result[2]:.2f}%')
+            
+    time_end = time.time()
+    print(f'Run: {run + 1:02d}, ' f'Time: {time_end - time_start:.4f}s')
     
     # Run-wise result
     logger.print_statistics(run)

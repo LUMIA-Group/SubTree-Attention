@@ -49,16 +49,18 @@ class PFGT(torch.nn.Module):
         Q = 1 + F.elu(Q)
         K = 1 + F.elu(K)
 
-        M = K.repeat(1, V.size(1)).view(-1, V.size(1), K.size(1)).transpose(-1, -
-                                                                            2) * V.repeat(1, K.size(1)).view(-1, K.size(1), V.size(1))
+        # M = K.repeat(1, V.size(1)).view(-1, V.size(1), K.size(1)).transpose(-1, -2) * V.repeat(1, K.size(1)).view(-1, K.size(1), V.size(1))
+        M = torch.einsum('ni,nj->nij',[K,V])
 
         hidden = V*(self.temp[0])
         for hop in range(self.K):
             M = self.propM(M, edge_index)
-            K = self.propK(K, edge_index)
-            H = (Q.repeat(1, M.size(-1)).view(-1, M.size(-1),
-                 Q.size(-1)).transpose(-1, -2) * M).sum(dim=-2)
-            C = (Q * K).sum(dim=-1, keepdim=True) + self.cst
+            K = self.propK(K, edge_index)         
+            # H = (Q.repeat(1, M.size(-1)).view(-1, M.size(-1),
+                #  Q.size(-1)).transpose(-1, -2) * M).sum(dim=-2)
+            H = torch.einsum('ni,nij->nj',[Q,M])
+            # C = (Q * K).sum(dim=-1, keepdim=True) + self.cst
+            C = torch.einsum('ni,ni->n',[Q,K]).unsqueeze(-1) + self.cst
             H = H / C
             gamma = self.temp[hop+1]
             hidden = hidden + gamma*H
