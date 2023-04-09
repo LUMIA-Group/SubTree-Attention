@@ -66,3 +66,78 @@ class PFGT(torch.nn.Module):
             hidden = hidden + gamma*H
 
         return hidden
+
+
+
+
+class MHPFGT(torch.nn.Module):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha, num_heads, multi_concat):
+        super(MHPFGT, self).__init__()
+        self.headc = headc = hidden_channels // num_heads
+        self.input_trans = Linear(num_features, hidden_channels)
+        self.linQ = Linear(hidden_channels, headc * num_heads)
+        self.linK = Linear(hidden_channels, headc * num_heads)
+        self.linV = Linear(hidden_channels, num_classes * num_heads)
+        self.output = Linear(num_classes * num_heads, num_classes)
+
+        self.propM = MessageProp(node_dim=-4)
+        self.propK = KeyProp(node_dim=-3)
+
+        self.dropout = dropout
+        self.K = K
+        self.alpha = alpha
+        self.num_heads = num_heads
+        self.num_classes = num_classes
+        self.multi_concat = multi_concat
+
+        self.cst = 10e-6
+
+        TEMP = alpha*(1-alpha)**np.arange(K+1)
+        TEMP[-1] = (1-alpha)**K
+
+        self.temp = Parameter(torch.tensor(TEMP))
+
+    def reset_parameters(self):
+        torch.nn.init.zeros_(self.temp)
+        for k in range(self.K+1):
+            self.temp.data[k] = self.alpha*(1-self.alpha)**k
+        self.temp.data[-1] = (1-self.alpha)**self.K
+
+    def forward(self, data):
+        x = data.graph['node_feat']
+        edge_index = data.graph['edge_index']
+
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = F.relu(self.input_trans(x))
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        Q = self.linQ(x)
+        K = self.linK(x)
+        V = self.linV(x)
+
+        Q = 1 + F.elu(Q)
+        K = 1 + F.elu(K)
+
+        Q = Q.view(-1, self.num_heads, self.headc)
+        K = K.view(-1, self.num_heads, self.headc)
+        V = V.view(-1, self.num_heads, self.num_classes)
+
+        M = torch.einsum('nhi,nhj->nhij', [K, V])
+
+        hidden = V * (self.temp[0])
+        for hop in range(self.K):
+            M = self.propM(M, edge_index)
+            K = self.propK(K, edge_index)         
+            H = torch.einsum('nhi,nhij->nhj', [Q, M])
+            C = torch.einsum('nhi,nhi->nh', [Q, K]).unsqueeze(-1) + self.cst
+            H = H / C
+            gamma = self.temp[hop+1]
+            hidden = hidden + gamma * H
+
+        if (self.multi_concat):
+            hidden = hidden.view(-1, self.num_classes * self.num_heads)
+            hidden = F.dropout(hidden, p=self.dropout, training=self.training)
+            hidden = self.output(hidden)
+        else:
+            hidden = hidden.mean(dim=-2)
+
+        return hidden

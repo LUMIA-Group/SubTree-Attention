@@ -33,6 +33,8 @@ params_config:
   alpha: [0.1]
   pe: [true]
   pe_dim: [3]
+  num_heads: [2]
+  multi_concat: [false]
 
   # configs for gnn baseline
   directed: [false]

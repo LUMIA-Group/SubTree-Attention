@@ -11,7 +11,7 @@ from torch_geometric.utils import to_undirected
 from logger import Logger
 from dataset import load_dataset
 from data_utils import load_fixed_splits
-from pfgnn import PFGT
+from pfgnn import PFGT, MHPFGT
 from eval import evaluate, eval_acc, eval_rocauc, eval_f1
 
 
@@ -66,6 +66,8 @@ parser.add_argument('--K', type=int, default=3)
 parser.add_argument('--alpha', type=float, default=0.1)
 parser.add_argument('--pe', action='store_true')
 parser.add_argument('--pe_dim', type=int, default=3)
+parser.add_argument('--num_heads', type=int, default=1)
+parser.add_argument('--multi_concat', action='store_true')
 
 
 # hyper-parameter for gnn baseline
@@ -132,8 +134,13 @@ dataset.graph['edge_index'], dataset.graph['node_feat'] = \
 
 # Load model
 assert args.method == 'pfgnn'
-model = PFGT(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
-             dropout=args.dropout, K=args.K, alpha=args.alpha).to(device)
+assert args.num_heads > 0
+if (args.num_heads == 1):
+    model = PFGT(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
+                dropout=args.dropout, K=args.K, alpha=args.alpha).to(device)
+else:
+    model = MHPFGT(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
+                dropout=args.dropout, K=args.K, alpha=args.alpha, num_heads=args.num_heads, multi_concat=args.multi_concat).to(device)
 
 ### Loss function (Single-class, Multi-class) ###
 if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):

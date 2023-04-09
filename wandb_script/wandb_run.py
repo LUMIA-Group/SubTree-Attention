@@ -21,7 +21,7 @@ from torch_geometric.utils import to_undirected
 from logger import Logger
 from dataset import load_dataset, create_split_idx_lst
 from data_utils import load_fixed_splits
-from pfgnn import PFGT
+from pfgnn import PFGT, MHPFGT
 from eval import evaluate, eval_acc, eval_rocauc, eval_f1
 
 
@@ -123,8 +123,14 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         
         # Load model
         assert params['method'] == 'pfgnn'
-        model = PFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
-                    dropout=params['dropout'], K=params['K'], alpha=params['alpha']).to(device)
+        assert params['num_heads'] > 0
+        if (params['num_heads'] == 1):
+            model = PFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
+                        dropout=params['dropout'], K=params['K'], alpha=params['alpha']).to(device)
+        else:
+            model = MHPFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
+                        dropout=params['dropout'], K=params['K'], alpha=params['alpha'], num_heads=params['num_heads'], multi_concat=params['multi_concat']).to(device)
+
 
         ### Loss function (Single-class, Multi-class) ###
         if params['dataset'] in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
