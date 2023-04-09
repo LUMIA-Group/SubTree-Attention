@@ -658,7 +658,7 @@ def create_split_idx_lst(yaml_file):
 
     args = Namespace(**dict_yaml)
 
-    dataset = load_dataset(args.data_dir, args.dataset, args.pe, args.pe_dim, args.sub_dataset)
+    dataset = load_dataset(args.data_dir, args.dataset, 'nodeformer', args.pe, args.pe_dim, args.sub_dataset)
 
     # get the splits for all runs
     assert args.rand_split or args.rand_split_class

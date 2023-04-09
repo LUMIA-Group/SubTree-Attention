@@ -71,7 +71,7 @@ class PFGT(torch.nn.Module):
 
 
 class MHPFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha, num_heads, multi_concat):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha, num_heads, ind_gamma, multi_concat):
         super(MHPFGT, self).__init__()
         self.headc = headc = hidden_channels // num_heads
         self.input_trans = Linear(num_features, hidden_channels)
@@ -89,19 +89,29 @@ class MHPFGT(torch.nn.Module):
         self.num_heads = num_heads
         self.num_classes = num_classes
         self.multi_concat = multi_concat
+        self.ind_gamma = ind_gamma
 
         self.cst = 10e-6
 
         TEMP = alpha*(1-alpha)**np.arange(K+1)
         TEMP[-1] = (1-alpha)**K
 
-        self.temp = Parameter(torch.tensor(TEMP))
+        if (ind_gamma):
+            self.temp = Parameter(torch.tensor(TEMP).unsqueeze(0).repeat(self.num_heads, 1).float())
+        else:
+            self.temp = Parameter(torch.tensor(TEMP))
 
     def reset_parameters(self):
         torch.nn.init.zeros_(self.temp)
-        for k in range(self.K+1):
-            self.temp.data[k] = self.alpha*(1-self.alpha)**k
-        self.temp.data[-1] = (1-self.alpha)**self.K
+        if (self.ind_gamma):
+            for h in range(self.num_heads):
+                for k in range(self.K+1):
+                    self.temp.data[h, k] = self.alpha*(1-self.alpha)**k
+                self.temp.data[h, -1] = (1-self.alpha)**self.K
+        else:        
+            for k in range(self.K+1):
+                self.temp.data[k] = self.alpha*(1-self.alpha)**k
+            self.temp.data[-1] = (1-self.alpha)**self.K
 
     def forward(self, data):
         x = data.graph['node_feat']
@@ -123,14 +133,21 @@ class MHPFGT(torch.nn.Module):
 
         M = torch.einsum('nhi,nhj->nhij', [K, V])
 
-        hidden = V * (self.temp[0])
+        if (self.ind_gamma):
+            hidden = V * (self.temp[:, 0].unsqueeze(-1))
+        else:
+            hidden = V * (self.temp[0])
+
         for hop in range(self.K):
             M = self.propM(M, edge_index)
             K = self.propK(K, edge_index)         
             H = torch.einsum('nhi,nhij->nhj', [Q, M])
             C = torch.einsum('nhi,nhi->nh', [Q, K]).unsqueeze(-1) + self.cst
             H = H / C
-            gamma = self.temp[hop+1]
+            if (self.ind_gamma):
+                gamma = self.temp[:, hop+1].unsqueeze(-1)
+            else:
+                gamma = self.temp[hop+1]
             hidden = hidden + gamma * H
 
         if (self.multi_concat):

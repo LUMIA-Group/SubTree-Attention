@@ -129,7 +129,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
                         dropout=params['dropout'], K=params['K'], alpha=params['alpha']).to(device)
         else:
             model = MHPFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
-                        dropout=params['dropout'], K=params['K'], alpha=params['alpha'], num_heads=params['num_heads'], multi_concat=params['multi_concat']).to(device)
+                        dropout=params['dropout'], K=params['K'], alpha=params['alpha'], num_heads=params['num_heads'], ind_gamma=params['ind_gamma'], multi_concat=params['multi_concat']).to(device)
 
 
         ### Loss function (Single-class, Multi-class) ###

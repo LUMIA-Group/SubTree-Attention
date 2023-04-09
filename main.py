@@ -69,7 +69,7 @@ parser.add_argument('--pe', action='store_true')
 parser.add_argument('--pe_dim', type=int, default=3)
 parser.add_argument('--num_heads', type=int, default=1)
 parser.add_argument('--multi_concat', action='store_true')
-
+parser.add_argument('--ind_gamma', action='store_true')
 
 # hyper-parameter for gnn baseline
 parser.add_argument('--directed', action='store_true',
@@ -141,7 +141,7 @@ if (args.num_heads == 1):
                 dropout=args.dropout, K=args.K, alpha=args.alpha).to(device)
 else:
     model = MHPFGT(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
-                dropout=args.dropout, K=args.K, alpha=args.alpha, num_heads=args.num_heads, multi_concat=args.multi_concat).to(device)
+                dropout=args.dropout, K=args.K, alpha=args.alpha, num_heads=args.num_heads, ind_gamma=args.ind_gamma, multi_concat=args.multi_concat).to(device)
 
 ### Loss function (Single-class, Multi-class) ###
 if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
