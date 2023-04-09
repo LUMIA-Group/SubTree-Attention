@@ -12,7 +12,7 @@ import scipy.io
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
 
-from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
+from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits, laplacian_positional_encoding
 
 from torch_geometric.datasets import Planetoid, Amazon, Coauthor
 from torch_geometric.utils import degree
@@ -90,9 +90,9 @@ class NCDataset(object):
         return '{}({})'.format(self.__class__.__name__, len(self))
 
 
-def load_dataset(data_dir, dataname, sub_dataname=''):
+def load_dataset(data_dir, dataname, pe, pe_dim, sub_dataname=''):
     if dataname in ('cora', 'citeseer', 'pubmed'):
-        dataset = load_planetoid_dataset(data_dir, dataname)
+        dataset = load_planetoid_dataset(data_dir, dataname, pe, pe_dim)
     elif dataname in ('amazon-photo', 'amazon-computer'):
         dataset = load_amazon_dataset(data_dir, dataname)
     elif dataname in ('coauthor-cs', 'coauthor-physics'):
@@ -407,7 +407,7 @@ def load_yelpchi_dataset(data_dir):
     return dataset
 
 
-def load_planetoid_dataset(data_dir, name):
+def load_planetoid_dataset(data_dir, name, pe, pe_dim):
     transform = T.NormalizeFeatures()
     torch_dataset = Planetoid(root=f'{data_dir}Planetoid',
                               name=name, transform=transform)
@@ -430,6 +430,13 @@ def load_planetoid_dataset(data_dir, name):
                      'edge_feat': None,
                      'num_nodes': num_nodes}
     dataset.label = label
+
+    if (pe):
+        print(f'use positional encoding with dim {pe_dim}')
+        lpe = laplacian_positional_encoding(dataset, pe_dim) 
+        node_feat = torch.cat((node_feat, lpe), dim=1)
+
+    dataset.graph['node_feat'] = node_feat
 
     return dataset
 
@@ -647,7 +654,7 @@ def create_split_idx_lst(yaml_file):
 
     args = Namespace(**dict_yaml)
 
-    dataset = load_dataset(args.data_dir, args.dataset, args.sub_dataset)
+    dataset = load_dataset(args.data_dir, args.dataset, args.pe, args.pe_dim, args.sub_dataset)
 
     # get the splits for all runs
     assert args.rand_split or args.rand_split_class

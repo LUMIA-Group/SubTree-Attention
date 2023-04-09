@@ -64,6 +64,8 @@ parser.add_argument('--weight_decay', type=float, default=5e-3)
 # hyper-parameter for PFGNN
 parser.add_argument('--K', type=int, default=3)
 parser.add_argument('--alpha', type=float, default=0.1)
+parser.add_argument('--pe', action='store_true')
+parser.add_argument('--pe_dim', type=int, default=3)
 
 
 # hyper-parameter for gnn baseline
@@ -86,7 +88,7 @@ else:
                           ) if torch.cuda.is_available() else torch.device("cpu")
 
 # Load data and preprocess
-dataset = load_dataset(args.data_dir, args.dataset, args.sub_dataset)
+dataset = load_dataset(args.data_dir, args.dataset, args.pe, args.pe_dim, args.sub_dataset)
 
 if len(dataset.label.shape) == 1:
     dataset.label = dataset.label.unsqueeze(1)

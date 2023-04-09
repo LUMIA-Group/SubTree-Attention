@@ -5,6 +5,8 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from scipy import sparse as sp
+from torch_geometric.utils import degree, to_scipy_sparse_matrix
+
 
 from torch_sparse import SparseTensor
 
@@ -231,6 +233,29 @@ def get_gpu_memory_map():
     gpu_memory = np.array([int(x) for x in result.strip().split('\n')])
     # gpu_memory_map = dict(zip(range(len(gpu_memory)), gpu_memory))
     return gpu_memory
+
+def laplacian_positional_encoding(g, pos_enc_dim):
+    """
+        Graph positional encoding v/ Laplacian eigenvectors
+    """
+
+    # Laplacian
+    # Calculate the adjacency matrix A using PyG's to_scipy_sparse_matrix function
+    A = to_scipy_sparse_matrix(g.graph['edge_index'], num_nodes = g.graph['num_nodes']).tocsr()
+
+    # Calculate the degree matrix N using PyG's degree function
+    N = sp.diags((torch.clamp(degree(g.graph['edge_index'][1],dtype=torch.int), min=1).numpy())** -0.5, dtype=float)
+
+    # Calculate the Laplacian matrix L
+    L = sp.eye(g.graph['num_nodes']) - N * A * N
+
+    # Eigenvectors with scipy
+    #EigVal, EigVec = sp.linalg.eigs(L, k=pos_enc_dim+1, which='SR')
+    EigVal, EigVec = sp.linalg.eigs(L, k=pos_enc_dim+1, which='SR', tol=1e-2) # for 40 PEs
+    EigVec = EigVec[:, EigVal.argsort()] # increasing order
+    lap_pos_enc = torch.from_numpy(EigVec[:,1:pos_enc_dim+1]).float() 
+
+    return lap_pos_enc
 
 dataset_drive_url = {
     'snap-patents' : '1ldh23TSY1PwXia6dU0MYcpyEgX-w3Hia', 

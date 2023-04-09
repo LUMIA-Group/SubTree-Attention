@@ -31,13 +31,15 @@ params_config:
   # configs for PFGNN
   K: [10]
   alpha: [0.1]
+  pe: [true]
+  pe_dim: [3]
 
   # configs for gnn baseline
   directed: [false]
 
   # configs for seed and number of runs
   seed: [42]
-  num_runs: [5]
+  num_runs: [2]
 
 sweep_config:
   method: "grid"

@@ -82,8 +82,9 @@ if __name__ == '__main__':
         print('Running in one-by-one mode.')
 
     num_space = count_sweep(mode='size_space', entity=args.entity, project=args.project, id=args.sweep_id)
+    print('Total number of search space: [%s]'%(num_space))
+    num_now = 0
     while True:
-        num_now = count_sweep(mode='num_runs', entity=args.entity, project=args.project, id=args.sweep_id)
         if num_now<num_space:
             gpu_index = q.get()
             if args.mode=='parallel':
@@ -91,7 +92,7 @@ if __name__ == '__main__':
                 p.start()
             elif args.mode=='one-by-one':
                 agent(args.entity, args.project, q, args.wandb_base, args.sweep_id, gpu_index, agent_package, code_fullname, save_model)
-            
+            num_now += 1
         else:
             break
     
