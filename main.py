@@ -54,6 +54,7 @@ parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'rocauc
 parser.add_argument('--save_model', action='store_true',
                     help='whether to save model')
 parser.add_argument('--model_dir', type=str, default='../model/')
+parser.add_argument('--exp_setting', type=str, default='nodeformer')
 
 # hyper-parameter for model arch and training
 parser.add_argument('--hidden_channels', type=int, default=32)
@@ -90,7 +91,7 @@ else:
                           ) if torch.cuda.is_available() else torch.device("cpu")
 
 # Load data and preprocess
-dataset = load_dataset(args.data_dir, args.dataset, args.pe, args.pe_dim, args.sub_dataset)
+dataset = load_dataset(args.data_dir, args.dataset, args.exp_setting, args.pe, args.pe_dim, args.sub_dataset)
 
 if len(dataset.label.shape) == 1:
     dataset.label = dataset.label.unsqueeze(1)

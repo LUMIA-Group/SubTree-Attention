@@ -90,47 +90,51 @@ class NCDataset(object):
         return '{}({})'.format(self.__class__.__name__, len(self))
 
 
-def load_dataset(data_dir, dataname, pe, pe_dim, sub_dataname=''):
-    if dataname in ('cora', 'citeseer', 'pubmed'):
-        dataset = load_planetoid_dataset(data_dir, dataname, pe, pe_dim)
-    elif dataname in ('amazon-photo', 'amazon-computer'):
-        dataset = load_amazon_dataset(data_dir, dataname)
-    elif dataname in ('coauthor-cs', 'coauthor-physics'):
-        dataset = load_coauthor_dataset(data_dir, dataname)
-    elif dataname in ('chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin'):
-        dataset = load_geom_gcn_dataset(data_dir, dataname)
-    elif dataname == 'ogbn-proteins':
-        dataset = load_proteins_dataset(data_dir)
-    elif dataname in ('ogbn-arxiv', 'ogbn-products'):
-        dataset = load_ogb_dataset(data_dir, dataname)
-    elif dataname == 'amazon2m':
-        dataset = load_amazon2m_dataset(data_dir)
-    elif dataname == 'twitch-e':
-        if sub_dataname not in ('DE', 'ENGB', 'ES', 'FR', 'PTBR', 'RU', 'TW'):
-            print('Invalid sub_dataname, deferring to DE graph')
-            sub_dataname = 'DE'
-        dataset = load_twitch_dataset(data_dir, sub_dataname)
-    elif dataname == 'fb100':
-        if sub_dataname not in ('Penn94', 'Amherst41', 'Cornell5', 'Johns Hopkins55', 'Reed98'):
-            print('Invalid sub_dataname, deferring to Penn94 graph')
-            sub_dataname = 'Penn94'
-        dataset = load_fb100_dataset(data_dir, sub_dataname)
-    elif dataname == 'deezer-europe':
-        dataset = load_deezer_dataset(data_dir)
-    elif dataname == 'arxiv-year':
-        dataset = load_arxiv_year_dataset(data_dir)
-    elif dataname == 'pokec':
-        dataset = load_pokec_mat(data_dir)
-    elif dataname == 'snap-patents':
-        dataset = load_snap_patents_mat(data_dir)
-    elif dataname == 'yelp-chi':
-        dataset = load_yelpchi_dataset(data_dir)
-    elif dataname == 'mini':
-        dataset =load_mini_imagenet(data_dir)
-    elif dataname == '20news':
-        dataset=load_20news(data_dir)
-    else:
-        raise ValueError('Invalid dataname')
+def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
+    assert exp_setting in ('nodeformer', 'nagphormer')
+    if exp_setting == 'nagphormer':
+        pass
+    elif exp_setting == 'nodeformer':
+        if dataname in ('cora', 'citeseer', 'pubmed'):
+            dataset = load_planetoid_dataset(data_dir, dataname, pe, pe_dim)
+        elif dataname in ('amazon-photo', 'amazon-computer'):
+            dataset = load_amazon_dataset(data_dir, dataname)
+        elif dataname in ('coauthor-cs', 'coauthor-physics'):
+            dataset = load_coauthor_dataset(data_dir, dataname)
+        elif dataname in ('chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin'):
+            dataset = load_geom_gcn_dataset(data_dir, dataname)
+        elif dataname == 'ogbn-proteins':
+            dataset = load_proteins_dataset(data_dir)
+        elif dataname in ('ogbn-arxiv', 'ogbn-products'):
+            dataset = load_ogb_dataset(data_dir, dataname)
+        elif dataname == 'amazon2m':
+            dataset = load_amazon2m_dataset(data_dir)
+        elif dataname == 'twitch-e':
+            if sub_dataname not in ('DE', 'ENGB', 'ES', 'FR', 'PTBR', 'RU', 'TW'):
+                print('Invalid sub_dataname, deferring to DE graph')
+                sub_dataname = 'DE'
+            dataset = load_twitch_dataset(data_dir, sub_dataname)
+        elif dataname == 'fb100':
+            if sub_dataname not in ('Penn94', 'Amherst41', 'Cornell5', 'Johns Hopkins55', 'Reed98'):
+                print('Invalid sub_dataname, deferring to Penn94 graph')
+                sub_dataname = 'Penn94'
+            dataset = load_fb100_dataset(data_dir, sub_dataname)
+        elif dataname == 'deezer-europe':
+            dataset = load_deezer_dataset(data_dir)
+        elif dataname == 'arxiv-year':
+            dataset = load_arxiv_year_dataset(data_dir)
+        elif dataname == 'pokec':
+            dataset = load_pokec_mat(data_dir)
+        elif dataname == 'snap-patents':
+            dataset = load_snap_patents_mat(data_dir)
+        elif dataname == 'yelp-chi':
+            dataset = load_yelpchi_dataset(data_dir)
+        elif dataname == 'mini':
+            dataset =load_mini_imagenet(data_dir)
+        elif dataname == '20news':
+            dataset=load_20news(data_dir)
+        else:
+            raise ValueError('Invalid dataname')
     return dataset
 
 

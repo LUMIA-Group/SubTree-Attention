@@ -85,7 +85,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
 
         # Load data and preprocess
         dataset = load_dataset(
-            params['data_dir'], params['dataset'], params['pe'], params['pe_dim'], params['sub_dataset'])
+            params['data_dir'], params['dataset'], params['exp_setting'], params['pe'], params['pe_dim'], params['sub_dataset'])
 
         if len(dataset.label.shape) == 1:
             dataset.label = dataset.label.unsqueeze(1)
