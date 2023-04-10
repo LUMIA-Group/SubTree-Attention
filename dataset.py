@@ -93,10 +93,52 @@ class NCDataset(object):
 def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
     assert exp_setting in ('nodeformer', 'nagphormer')
     if exp_setting == 'nagphormer':
-        pass
+        if dataname in {"pubmed", "corafull", "computer", "photo", "cs", "physics","cora", "citeseer"}:
+
+            file_path = data_dir+"nagphormer/"+dataname+".pt"
+
+            data_list = torch.load(file_path)
+
+            # data_list = [adj, features, labels, idx_train, idx_val, idx_test]
+            adj = data_list[0]
+            features = data_list[1]
+            labels = data_list[2]
+            idx_train = data_list[3]
+            idx_val = data_list[4]
+            idx_test = data_list[5]
+
+            num_nodes = adj.size(0)
+            edge_index = adj.coalesce().indices()
+            edge_index = torch.stack([edge_index[0], edge_index[1]], dim=0)
+
+            dataset = NCDataset(dataname)
+
+            split_idx = {'train': torch.tensor(idx_train),
+                         'valid': torch.tensor(idx_val),
+                         'test': torch.tensor(idx_test)}
+            
+            dataset.split_idx = split_idx
+
+            # dataset.train_idx = idx_train
+            # dataset.valid_idx = idx_val
+            # dataset.test_idx = idx_test
+
+            dataset.graph = {'edge_index': edge_index,
+                            'node_feat': features,
+                            'edge_feat': None,
+                            'num_nodes': num_nodes}
+            dataset.label = labels
+
+            if (pe):
+                print(f'use positional encoding with dim {pe_dim}')
+                lpe = laplacian_positional_encoding(dataset, pe_dim) 
+                node_feat = torch.cat((features, lpe), dim=1)
+                dataset.graph['node_feat'] = node_feat
+
+
     elif exp_setting == 'nodeformer':
         if dataname in ('cora', 'citeseer', 'pubmed'):
-            dataset = load_planetoid_dataset(data_dir, dataname, pe, pe_dim)
+            dataset = load_planetoid_dataset(data_dir, dataname)
         elif dataname in ('amazon-photo', 'amazon-computer'):
             dataset = load_amazon_dataset(data_dir, dataname)
         elif dataname in ('coauthor-cs', 'coauthor-physics'):
@@ -135,6 +177,13 @@ def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
             dataset=load_20news(data_dir)
         else:
             raise ValueError('Invalid dataname')
+        
+        if (pe):
+            print(f'use positional encoding with dim {pe_dim}')
+            lpe = laplacian_positional_encoding(dataset, pe_dim) 
+            node_feat = torch.cat((dataset.graph['node_feat'], lpe), dim=1)
+            dataset.graph['node_feat'] = node_feat
+
     return dataset
 
 
@@ -411,7 +460,7 @@ def load_yelpchi_dataset(data_dir):
     return dataset
 
 
-def load_planetoid_dataset(data_dir, name, pe, pe_dim):
+def load_planetoid_dataset(data_dir, name):
     transform = T.NormalizeFeatures()
     torch_dataset = Planetoid(root=f'{data_dir}Planetoid',
                               name=name, transform=transform)
@@ -434,13 +483,6 @@ def load_planetoid_dataset(data_dir, name, pe, pe_dim):
                      'edge_feat': None,
                      'num_nodes': num_nodes}
     dataset.label = label
-
-    if (pe):
-        print(f'use positional encoding with dim {pe_dim}')
-        lpe = laplacian_positional_encoding(dataset, pe_dim) 
-        node_feat = torch.cat((node_feat, lpe), dim=1)
-
-    dataset.graph['node_feat'] = node_feat
 
     return dataset
 

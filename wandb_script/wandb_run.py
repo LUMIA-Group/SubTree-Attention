@@ -92,18 +92,22 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         dataset.label = dataset.label.to(device)
 
         # get the splits for all runs
-        if params['rand_split'] or params['rand_split_class']:
-            rand_split_path = '{}rand_split/{}'.format(params['data_dir'], params['dataset']) if params['rand_split'] else '{}rand_split_class/{}'.format(params['data_dir'], params['dataset'])
-            target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
-            assert os.path.exists(target_rand_split_path)
-            split_idx_lst = torch.load(target_rand_split_path)
-        elif params['dataset'] in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
-            split_idx_lst = [dataset.load_fixed_splits()
-                            for _ in range(params["num_runs"])]
-        else:
-            split_idx_lst = load_fixed_splits(
-                params['data_dir'], dataset, name=params['dataset'], protocol=params['protocol'])
-            
+        if (params['exp_setting'] == 'nodeformer'):
+            if params['rand_split'] or params['rand_split_class']:
+                rand_split_path = '{}rand_split/{}'.format(params['data_dir'], params['dataset']) if params['rand_split'] else '{}rand_split_class/{}'.format(params['data_dir'], params['dataset'])
+                target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
+                assert os.path.exists(target_rand_split_path)
+                split_idx_lst = torch.load(target_rand_split_path)
+            elif params['dataset'] in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
+                split_idx_lst = [dataset.load_fixed_splits()
+                                for _ in range(params["num_runs"])]
+            else:
+                split_idx_lst = load_fixed_splits(
+                    params['data_dir'], dataset, name=params['dataset'], protocol=params['protocol'])
+        elif (params['exp_setting'] == 'nagphormer'):
+            print('using nagphormer exp setting !')
+            split_idx_lst = [dataset.split_idx]
+
         # Get num_nodes and num_edges
         n = dataset.graph['num_nodes']
         e = dataset.graph['edge_index'].shape[1]
@@ -152,12 +156,15 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         print('MODEL:', model)
 
         run = params['runs']
-        assert run<len(split_idx_lst)
 
-        if params['dataset'] in ['cora', 'citeseer', 'pubmed'] and params['protocol'] == 'semi':
+        if (params['exp_setting'] == 'nodeformer'):
+            if params['dataset'] in ['cora', 'citeseer', 'pubmed'] and params['protocol'] == 'semi':
+                split_idx = split_idx_lst[0]
+            else:
+                split_idx = split_idx_lst[run]
+        elif (params['exp_setting'] == 'nagphormer'):
             split_idx = split_idx_lst[0]
-        else:
-            split_idx = split_idx_lst[run]
+
         train_idx = split_idx['train'].to(device)
         model.reset_parameters()
         optimizer = torch.optim.Adam(model.parameters(),weight_decay=params['weight_decay'], lr=params['lr'])

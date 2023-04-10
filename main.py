@@ -98,18 +98,21 @@ if len(dataset.label.shape) == 1:
 dataset.label = dataset.label.to(device)
 
 # get the splits for all runs
-if args.rand_split:
-    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
-                     for _ in range(args.runs)]
-elif args.rand_split_class:
-    split_idx_lst = [dataset.get_idx_split(split_type='class', label_num_per_class=args.label_num_per_class)
-                     for _ in range(args.runs)]
-elif args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
-    split_idx_lst = [dataset.load_fixed_splits()
-                     for _ in range(args.runs)]
-else:
-    split_idx_lst = load_fixed_splits(
-        args.data_dir, dataset, name=args.dataset, protocol=args.protocol)
+if (args.exp_setting == 'nodeformer'):
+    if args.rand_split:
+        split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
+                        for _ in range(args.runs)]
+    elif args.rand_split_class:
+        split_idx_lst = [dataset.get_idx_split(split_type='class', label_num_per_class=args.label_num_per_class)
+                        for _ in range(args.runs)]
+    elif args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
+        split_idx_lst = [dataset.load_fixed_splits()
+                        for _ in range(args.runs)]
+    else:
+        split_idx_lst = load_fixed_splits(
+            args.data_dir, dataset, name=args.dataset, protocol=args.protocol)
+elif (args.exp_setting == 'nagphormer'):
+    split_idx_lst = [dataset.split_idx]
 
 
 # Get num_nodes and num_edges
@@ -167,10 +170,14 @@ print('MODEL:', model)
 
 # Training loop
 for run in range(args.runs):
-    if args.dataset in ['cora', 'citeseer', 'pubmed'] and args.protocol == 'semi':
+    if (args.exp_setting == 'nodeformer'):
+        if args.dataset in ['cora', 'citeseer', 'pubmed'] and args.protocol == 'semi':
+            split_idx = split_idx_lst[0]
+        else:
+            split_idx = split_idx_lst[run]
+    elif (args.exp_setting == 'nagphormer'):
+        print('using nagphormer exp setting !')
         split_idx = split_idx_lst[0]
-    else:
-        split_idx = split_idx_lst[run]
     train_idx = split_idx['train'].to(device)
     model.reset_parameters()
     optimizer = torch.optim.Adam(model.parameters(),weight_decay=args.weight_decay, lr=args.lr)

@@ -8,7 +8,7 @@ params_config:
   model_dir: ["../model/"]
 
   # configs for dataset
-  exp_setting: ["nodeformer"]
+  exp_setting: ["nagphormer"]
   dataset: ["cora"]
   sub_dataset: [""] 
   data_dir: ["../data/"]
