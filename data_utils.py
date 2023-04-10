@@ -244,7 +244,7 @@ def laplacian_positional_encoding(g, pos_enc_dim):
     A = to_scipy_sparse_matrix(g.graph['edge_index'], num_nodes = g.graph['num_nodes']).tocsr()
 
     # Calculate the degree matrix N using PyG's degree function
-    N = sp.diags((torch.clamp(degree(g.graph['edge_index'][1],dtype=torch.int), min=1).numpy())** -0.5, dtype=float)
+    N = sp.diags((torch.clamp(degree(g.graph['edge_index'][1],num_nodes = g.graph['num_nodes'],dtype=torch.int), min=1).numpy())** -0.5, dtype=float)
 
     # Calculate the Laplacian matrix L
     L = sp.eye(g.graph['num_nodes']) - N * A * N
