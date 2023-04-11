@@ -20,8 +20,8 @@ params_config:
   label_num_per_class: [20]
 
   # configs for model arch and training
-  hidden_channels: [32]
-  dropout: [0.0]
+  hidden_channels: [128]
+  dropout: [0.5]
   lr: [0.001]
   weight_decay: [0.005]
   epochs: [3000]
@@ -35,8 +35,9 @@ params_config:
   pe: [true]
   pe_dim: [3]
   num_heads: [3]
-  multi_concat: [false]
+  multi_concat: [true]
   ind_gamma: [true]
+  gamma_softmax: [true]
 
   # configs for gnn baseline
   directed: [false]
