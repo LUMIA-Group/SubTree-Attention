@@ -83,6 +83,8 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         device = torch.device("cuda:" + str(gpu_index)
                               ) if torch.cuda.is_available() else torch.device("cpu")
 
+        print('Using device:', device)
+
         # Load data and preprocess
         dataset = load_dataset(
             params['data_dir'], params['dataset'], params['exp_setting'], params['pe'], params['pe_dim'], params['sub_dataset'])
@@ -130,10 +132,14 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         assert params['num_heads'] > 0
         if (params['num_heads'] == 1):
             model = PFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
-                        dropout=params['dropout'], K=params['K'], alpha=params['alpha']).to(device)
+                        dropout=params['dropout'], K=params['K'], alpha=params['alpha'],
+                        aggr=params['aggr'], add_self_loops=params['add_self_loops']).to(device)
         else:
             model = MHPFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
-                        dropout=params['dropout'], K=params['K'], alpha=params['alpha'], num_heads=params['num_heads'], ind_gamma=params['ind_gamma'],gamma_softmax=params['gamma_softmax'], multi_concat=params['multi_concat']).to(device)
+                        dropout=params['dropout'], K=params['K'], alpha=params['alpha'],
+                        num_heads=params['num_heads'], ind_gamma=params['ind_gamma'],
+                        gamma_softmax=params['gamma_softmax'], multi_concat=params['multi_concat'],
+                        aggr=params['aggr'], add_self_loops=params['add_self_loops']).to(device)
 
 
         ### Loss function (Single-class, Multi-class) ###
@@ -171,6 +177,8 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         model.reset_parameters()
         optimizer = torch.optim.Adam(model.parameters(),weight_decay=params['weight_decay'], lr=params['lr'])
         best_val = float('-inf')
+
+        time_start = time.time()
 
         best_test_metric = 0
 
@@ -218,6 +226,8 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
                 wandb.log({'metric/train': result[0], 'metric/val': result[1], 'metric/test': result[2], 'loss/train': train_loss, 'loss/val': result[3], 'loss/test': result[4]})
 
             
+        time_end = time.time()
+        print(f'Run: {run + 1:02d}, ' f'Time: {time_end - time_start:.4f}s')
         print('Final metric is [%s]' % (best_test_metric))
         wandb.run.summary["metric/final"] = best_test_metric
 

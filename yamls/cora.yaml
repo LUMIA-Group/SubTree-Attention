@@ -20,11 +20,11 @@ params_config:
   label_num_per_class: [20]
 
   # configs for model arch and training
-  hidden_channels: [128]
+  hidden_channels: [32]
   dropout: [0.5]
   lr: [0.001]
   weight_decay: [0.005]
-  epochs: [3000]
+  epochs: [2000]
   eval_step: [1]
   log_freq: [1]
   metric: ["acc"]
@@ -38,13 +38,15 @@ params_config:
   multi_concat: [true]
   ind_gamma: [true]
   gamma_softmax: [true]
+  aggr: ['normalized_laplacian']
+  add_self_loops: [true]
 
   # configs for gnn baseline
   directed: [false]
 
   # configs for seed and number of runs
   seed: [42]
-  num_runs: [2]
+  num_runs: [1]
 
 sweep_config:
   method: "grid"

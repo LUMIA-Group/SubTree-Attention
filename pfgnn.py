@@ -1,26 +1,33 @@
 import torch
-from torch.nn import Parameter, Linear, init
+from torch.nn import Parameter, Linear
 import torch.nn.functional as F
 import numpy as np
+from torch_geometric.utils import add_self_loops, degree
 
-from pfprop import MessageProp, KeyProp
+from pfprop import MessageProp, KeyProp, MessageProp_normalized_laplacian, KeyProp_normalized_laplacian
 
 
 class PFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha, aggr, add_self_loops):
         super(PFGT, self).__init__()
         self.input_trans = Linear(num_features, hidden_channels)
         self.linQ = Linear(hidden_channels, hidden_channels)
         self.linK = Linear(hidden_channels, hidden_channels)
         self.linV = Linear(hidden_channels, num_classes)
 
-        self.propM = MessageProp()
-        self.propK = KeyProp()
+        if (aggr=='normalized_laplacian'):
+            self.propM = MessageProp_normalized_laplacian(node_dim=-3)
+            self.propK = KeyProp_normalized_laplacian(node_dim=-2)        
+        else:
+            self.propM = MessageProp(aggr=aggr, node_dim=-3)
+            self.propK = KeyProp(aggr=aggr, node_dim=-2)
 
         self.c = hidden_channels
         self.dropout = dropout
         self.K = K
         self.alpha = alpha
+        self.aggr = aggr
+        self.add_self_loops = add_self_loops
 
         self.cst = 10e-6
 
@@ -39,6 +46,16 @@ class PFGT(torch.nn.Module):
         x = data.graph['node_feat']
         edge_index = data.graph['edge_index']
 
+        if (self.aggr=='normalized_laplacian'):
+            if (self.add_self_loops):
+                edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+
+            row, col = edge_index
+            deg = degree(col, x.size(0), dtype=x.dtype)
+            deg_inv_sqrt = deg.pow(-0.5)
+            deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+            norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = F.relu(self.input_trans(x))
         x = F.dropout(x, p=self.dropout, training=self.training)
@@ -54,8 +71,12 @@ class PFGT(torch.nn.Module):
 
         hidden = V*(self.temp[0])
         for hop in range(self.K):
-            M = self.propM(M, edge_index)
-            K = self.propK(K, edge_index)         
+            if (self.aggr=='normalized_laplacian'):
+                M = self.propM(M, edge_index, norm.view(-1,1,1))
+                K = self.propK(K, edge_index, norm.view(-1,1))
+            else:
+                M = self.propM(M, edge_index)
+                K = self.propK(K, edge_index)         
             # H = (Q.repeat(1, M.size(-1)).view(-1, M.size(-1),
                 #  Q.size(-1)).transpose(-1, -2) * M).sum(dim=-2)
             H = torch.einsum('ni,nij->nj',[Q,M])
@@ -69,7 +90,7 @@ class PFGT(torch.nn.Module):
 
 
 class MHPFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha, num_heads, ind_gamma, gamma_softmax, multi_concat):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha, num_heads, ind_gamma, gamma_softmax, multi_concat, aggr, add_self_loops):
         super(MHPFGT, self).__init__()
         self.headc = headc = hidden_channels // num_heads
         self.input_trans = Linear(num_features, hidden_channels)
@@ -78,8 +99,12 @@ class MHPFGT(torch.nn.Module):
         self.linV = Linear(hidden_channels, num_classes * num_heads)
         self.output = Linear(num_classes * num_heads, num_classes)
 
-        self.propM = MessageProp(node_dim=-4)
-        self.propK = KeyProp(node_dim=-3)
+        if (aggr=='normalized_laplacian'):
+            self.propM = MessageProp_normalized_laplacian(node_dim=-4)
+            self.propK = KeyProp_normalized_laplacian(node_dim=-3)        
+        else:
+            self.propM = MessageProp(aggr=aggr, node_dim=-4)
+            self.propK = KeyProp(aggr=aggr, node_dim=-3)
 
         self.dropout = dropout
         self.K = K
@@ -89,6 +114,8 @@ class MHPFGT(torch.nn.Module):
         self.multi_concat = multi_concat
         self.ind_gamma = ind_gamma
         self.gamma_softmax = gamma_softmax
+        self.aggr = aggr
+        self.add_self_loops = add_self_loops
 
         self.cst = 10e-6
 
@@ -98,8 +125,11 @@ class MHPFGT(torch.nn.Module):
         if (ind_gamma):
             if (gamma_softmax):
                 self.hopwise = Parameter(torch.tensor(TEMP))
-                self.temp = Parameter(torch.empty(self.num_heads, self.K + 1, requires_grad=True, dtype=torch.float, device='cuda'))
-                init.uniform_(self.temp)
+                bound = np.sqrt(3/(K+1))
+                TEMP_onehead = np.random.uniform(-bound, bound, K+1)
+                TEMP_onehead = TEMP_onehead/np.sum(np.abs(TEMP_onehead))
+                self.temp = Parameter(torch.tensor(TEMP_onehead).unsqueeze(
+                    0).repeat(self.num_heads, 1).float()).cuda()
             else:
                 self.temp = Parameter(torch.tensor(TEMP).unsqueeze(
                     0).repeat(self.num_heads, 1).float())
@@ -113,7 +143,11 @@ class MHPFGT(torch.nn.Module):
                 for k in range(self.K+1):
                     self.hopwise.data[k] = self.alpha*(1-self.alpha)**k
                 self.hopwise.data[-1] = (1-self.alpha)**self.K
-                init.uniform_(self.temp)
+                bound = np.sqrt(3/(self.K+1))
+                TEMP_onehead = np.random.uniform(-bound, bound, self.K+1)
+                TEMP_onehead = TEMP_onehead/np.sum(np.abs(TEMP_onehead))
+                self.temp = Parameter(torch.tensor(TEMP_onehead).unsqueeze(
+                    0).repeat(self.num_heads, 1).float()).cuda()
             else:
                 for h in range(self.num_heads):
                     for k in range(self.K+1):
@@ -127,6 +161,16 @@ class MHPFGT(torch.nn.Module):
     def forward(self, data):
         x = data.graph['node_feat']
         edge_index = data.graph['edge_index']
+
+        if (self.aggr=='normalized_laplacian'):
+            if (self.add_self_loops):
+                edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+
+            row, col = edge_index
+            deg = degree(col, x.size(0), dtype=x.dtype)
+            deg_inv_sqrt = deg.pow(-0.5)
+            deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+            norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
 
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = F.relu(self.input_trans(x))
@@ -146,7 +190,10 @@ class MHPFGT(torch.nn.Module):
         M = torch.einsum('nhi,nhj->nhij', [K, V])
 
         if (self.ind_gamma):
-            hidden = V * (self.temp[:, 0].unsqueeze(-1))
+            if (self.gamma_softmax):
+                hidden = V * (self.hopwise[0])
+            else:
+                hidden = V * (self.temp[:, 0].unsqueeze(-1))
         else:
             hidden = V * (self.temp[0])
 
@@ -154,8 +201,12 @@ class MHPFGT(torch.nn.Module):
             layerwise = F.softmax(self.temp, dim=-2)
 
         for hop in range(self.K):
-            M = self.propM(M, edge_index)
-            K = self.propK(K, edge_index)
+            if (self.aggr=='normalized_laplacian'):
+                M = self.propM(M, edge_index, norm.view(-1,1,1,1))
+                K = self.propK(K, edge_index, norm.view(-1,1,1))
+            else:
+                M = self.propM(M, edge_index)
+                K = self.propK(K, edge_index) 
             H = torch.einsum('nhi,nhij->nhj', [Q, M])
             C = torch.einsum('nhi,nhi->nh', [Q, K]).unsqueeze(-1) + self.cst
             H = H / C
