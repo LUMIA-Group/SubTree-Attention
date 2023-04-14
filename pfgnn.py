@@ -90,7 +90,8 @@ class MHPFGT(torch.nn.Module):
         self.linQ = Linear(hidden_channels, headc * num_heads)
         self.linK = Linear(hidden_channels, headc * num_heads)
         self.linV = Linear(hidden_channels, num_classes * num_heads)
-        self.output = Linear(num_classes * num_heads, num_classes)
+        if (multi_concat):
+            self.output = Linear(num_classes * num_heads, num_classes)
 
         if (aggr=='normalized_laplacian'):
             self.propM = MessageProp_normalized_laplacian(node_dim=-4)
@@ -124,6 +125,12 @@ class MHPFGT(torch.nn.Module):
         if (self.ind_gamma and self.gamma_softmax):
                 torch.nn.init.ones_(self.hopwise)
         torch.nn.init.ones_(self.temp)
+        self.input_trans.reset_parameters()
+        self.linQ.reset_parameters()
+        self.linK.reset_parameters()
+        self.linV.reset_parameters()
+        if (self.multi_concat):
+            self.output.reset_parameters()
 
     def forward(self, data):
         x = data.graph['node_feat']
