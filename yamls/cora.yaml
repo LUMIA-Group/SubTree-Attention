@@ -5,7 +5,7 @@ params_config:
   agent_package: [100]
   ignore_keys: [['seed','index_runs','index_split']]
   save_model: [false]
-  model_dir: ["../model/"]
+  model_dir: ["exp/model/"]
 
   # configs for dataset
   exp_setting: ["nagphormer"]
@@ -31,7 +31,6 @@ params_config:
 
   # configs for PFGNN
   K: [10]
-  alpha: [0.1]
   pe: [true]
   pe_dim: [3]
   num_heads: [3]

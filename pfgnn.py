@@ -8,7 +8,7 @@ from pfprop import MessageProp, KeyProp, MessageProp_normalized_laplacian, KeyPr
 
 
 class PFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha, aggr, add_self_loops):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, aggr, add_self_loops):
         super(PFGT, self).__init__()
         self.input_trans = Linear(num_features, hidden_channels)
         self.linQ = Linear(hidden_channels, hidden_channels)
@@ -25,22 +25,15 @@ class PFGT(torch.nn.Module):
         self.c = hidden_channels
         self.dropout = dropout
         self.K = K
-        self.alpha = alpha
         self.aggr = aggr
         self.add_self_loops = add_self_loops
 
         self.cst = 10e-6
 
-        TEMP = alpha*(1-alpha)**np.arange(K+1)
-        TEMP[-1] = (1-alpha)**K
-
-        self.temp = Parameter(torch.tensor(TEMP))
+        self.temp = Parameter(torch.ones(K+1))
 
     def reset_parameters(self):
-        torch.nn.init.zeros_(self.temp)
-        for k in range(self.K+1):
-            self.temp.data[k] = self.alpha*(1-self.alpha)**k
-        self.temp.data[-1] = (1-self.alpha)**self.K
+        torch.nn.init.ones_(self.temp)
 
     def forward(self, data):
         x = data.graph['node_feat']
@@ -90,7 +83,7 @@ class PFGT(torch.nn.Module):
 
 
 class MHPFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, alpha, num_heads, ind_gamma, gamma_softmax, multi_concat, aggr, add_self_loops):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, num_heads, ind_gamma, gamma_softmax, multi_concat, aggr, add_self_loops):
         super(MHPFGT, self).__init__()
         self.headc = headc = hidden_channels // num_heads
         self.input_trans = Linear(num_features, hidden_channels)
@@ -108,7 +101,6 @@ class MHPFGT(torch.nn.Module):
 
         self.dropout = dropout
         self.K = K
-        self.alpha = alpha
         self.num_heads = num_heads
         self.num_classes = num_classes
         self.multi_concat = multi_concat
@@ -119,44 +111,19 @@ class MHPFGT(torch.nn.Module):
 
         self.cst = 10e-6
 
-        TEMP = alpha*(1-alpha)**np.arange(K+1)
-        TEMP[-1] = (1-alpha)**K
-
         if (ind_gamma):
             if (gamma_softmax):
-                self.hopwise = Parameter(torch.tensor(TEMP))
-                bound = np.sqrt(3/(K+1))
-                TEMP_onehead = np.random.uniform(-bound, bound, K+1)
-                TEMP_onehead = TEMP_onehead/np.sum(np.abs(TEMP_onehead))
-                self.temp = Parameter(torch.tensor(TEMP_onehead).unsqueeze(
-                    0).repeat(self.num_heads, 1).float()).cuda()
+                self.hopwise = Parameter(torch.ones(K+1))
+                self.temp = Parameter(torch.ones(size=(self.num_heads,K)))
             else:
-                self.temp = Parameter(torch.tensor(TEMP).unsqueeze(
-                    0).repeat(self.num_heads, 1).float())
+                self.temp = Parameter(torch.ones(size=(self.num_heads,K+1)))
         else:
-            self.temp = Parameter(torch.tensor(TEMP))
+            self.temp = Parameter(torch.ones(K+1))
 
     def reset_parameters(self):
-        torch.nn.init.zeros_(self.temp)
-        if (self.ind_gamma):
-            if (self.gamma_softmax):
-                for k in range(self.K+1):
-                    self.hopwise.data[k] = self.alpha*(1-self.alpha)**k
-                self.hopwise.data[-1] = (1-self.alpha)**self.K
-                bound = np.sqrt(3/(self.K+1))
-                TEMP_onehead = np.random.uniform(-bound, bound, self.K+1)
-                TEMP_onehead = TEMP_onehead/np.sum(np.abs(TEMP_onehead))
-                self.temp = Parameter(torch.tensor(TEMP_onehead).unsqueeze(
-                    0).repeat(self.num_heads, 1).float()).cuda()
-            else:
-                for h in range(self.num_heads):
-                    for k in range(self.K+1):
-                        self.temp.data[h, k] = self.alpha*(1-self.alpha)**k
-                    self.temp.data[h, -1] = (1-self.alpha)**self.K
-        else:
-            for k in range(self.K+1):
-                self.temp.data[k] = self.alpha*(1-self.alpha)**k
-            self.temp.data[-1] = (1-self.alpha)**self.K
+        if (self.ind_gamma and self.gamma_softmax):
+                torch.nn.init.ones_(self.hopwise)
+        torch.nn.init.ones_(self.temp)
 
     def forward(self, data):
         x = data.graph['node_feat']
@@ -212,7 +179,7 @@ class MHPFGT(torch.nn.Module):
             H = H / C
             if (self.ind_gamma):
                 if (self.gamma_softmax):
-                    gamma = self.hopwise[hop+1] * layerwise[:, hop+1].unsqueeze(-1)
+                    gamma = self.hopwise[hop+1] * layerwise[:, hop].unsqueeze(-1)
                 else:
                     gamma = self.temp[:, hop+1].unsqueeze(-1)
             else:

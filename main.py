@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import random
+import os
 import json
 import numpy as np
 import argparse
@@ -53,7 +54,7 @@ parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'rocauc
                     help='evaluation metric')
 parser.add_argument('--save_model', action='store_true',
                     help='whether to save model')
-parser.add_argument('--model_dir', type=str, default='../model/')
+parser.add_argument('--model_dir', type=str, default='exp/model/')
 parser.add_argument('--exp_setting', type=str, default='nodeformer')
 
 # hyper-parameter for model arch and training
@@ -64,7 +65,6 @@ parser.add_argument('--weight_decay', type=float, default=5e-3)
 
 # hyper-parameter for PFGNN
 parser.add_argument('--K', type=int, default=3)
-parser.add_argument('--alpha', type=float, default=0.1)
 parser.add_argument('--pe', action='store_true')
 parser.add_argument('--pe_dim', type=int, default=3)
 parser.add_argument('--num_heads', type=int, default=1)
@@ -146,11 +146,11 @@ assert args.method == 'pfgnn'
 assert args.num_heads > 0
 if (args.num_heads == 1):
     model = PFGT(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
-                dropout=args.dropout, K=args.K, alpha=args.alpha, aggr=args.aggr, 
+                dropout=args.dropout, K=args.K, aggr=args.aggr, 
                 add_self_loops=args.add_self_loops).to(device)
 else:
     model = MHPFGT(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
-                dropout=args.dropout, K=args.K, alpha=args.alpha, num_heads=args.num_heads,
+                dropout=args.dropout, K=args.K, num_heads=args.num_heads,
                 ind_gamma=args.ind_gamma, gamma_softmax=args.gamma_softmax, multi_concat=args.multi_concat,
                 aggr=args.aggr, add_self_loops=args.add_self_loops).to(device)
 
@@ -225,6 +225,8 @@ for run in range(args.runs):
             if result[1] > best_val:
                 best_val = result[1]
                 if args.save_model:
+                    if not (os.path.exists(args.model_dir)):
+                        os.makedirs(args.model_dir)
                     torch.save(model.state_dict(), args.model_dir + f'{args.dataset}-{args.method}.pkl')
 
             print(f'Epoch: {epoch:02d}, '

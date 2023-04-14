@@ -132,14 +132,14 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         assert params['num_heads'] > 0
         if (params['num_heads'] == 1):
             model = PFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
-                        dropout=params['dropout'], K=params['K'], alpha=params['alpha'],
-                        aggr=params['aggr'], add_self_loops=params['add_self_loops']).to(device)
+                        dropout=params['dropout'], K=params['K'], aggr=params['aggr'],
+                        add_self_loops=params['add_self_loops']).to(device)
         else:
             model = MHPFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
-                        dropout=params['dropout'], K=params['K'], alpha=params['alpha'],
-                        num_heads=params['num_heads'], ind_gamma=params['ind_gamma'],
-                        gamma_softmax=params['gamma_softmax'], multi_concat=params['multi_concat'],
-                        aggr=params['aggr'], add_self_loops=params['add_self_loops']).to(device)
+                        dropout=params['dropout'], K=params['K'], num_heads=params['num_heads'],
+                        ind_gamma=params['ind_gamma'], gamma_softmax=params['gamma_softmax'], 
+                        multi_concat=params['multi_concat'],aggr=params['aggr'],
+                        add_self_loops=params['add_self_loops']).to(device)
 
 
         ### Loss function (Single-class, Multi-class) ###
@@ -214,7 +214,10 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
                     best_val = result[1]
                     best_test_metric = result[2]
                     if params['save_model']:
+                        if not (os.path.exists(params['model_dir'])):
+                            os.makedirs(params['model_dir'])
                         torch.save(model.state_dict(), params['model_dir'] + f'{params["dataset"]}-{params["method"]}.pkl')
+
 
                 # print(f'Epoch: {epoch:02d}, '
                 #     f'Loss: {train_loss:.4f}, '
