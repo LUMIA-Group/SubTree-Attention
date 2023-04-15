@@ -1,3 +1,4 @@
+import math
 import torch
 from torch.nn import Parameter, Linear
 import torch.nn.functional as F
@@ -30,10 +31,10 @@ class PFGT(torch.nn.Module):
 
         self.cst = 10e-6
 
-        self.temp = Parameter(torch.ones(K+1))
+        self.hopwise = Parameter(torch.ones(K+1))
 
     def reset_parameters(self):
-        torch.nn.init.ones_(self.temp)
+        torch.nn.init.ones_(self.hopwise)
 
     def forward(self, data):
         x = data.graph['node_feat']
@@ -62,7 +63,7 @@ class PFGT(torch.nn.Module):
         # M = K.repeat(1, V.size(1)).view(-1, V.size(1), K.size(1)).transpose(-1, -2) * V.repeat(1, K.size(1)).view(-1, K.size(1), V.size(1))
         M = torch.einsum('ni,nj->nij',[K,V])
 
-        hidden = V*(self.temp[0])
+        hidden = V*(self.hopwise[0])
         for hop in range(self.K):
             if (self.aggr=='normalized_laplacian'):
                 M = self.propM(M, edge_index, norm.view(-1,1,1))
@@ -76,7 +77,7 @@ class PFGT(torch.nn.Module):
             # C = (Q * K).sum(dim=-1, keepdim=True) + self.cst
             C = torch.einsum('ni,ni->n',[Q,K]).unsqueeze(-1) + self.cst
             H = H / C
-            gamma = self.temp[hop+1]
+            gamma = self.hopwise[hop+1]
             hidden = hidden + gamma*H
 
         return hidden
@@ -115,16 +116,20 @@ class MHPFGT(torch.nn.Module):
         if (ind_gamma):
             if (gamma_softmax):
                 self.hopwise = Parameter(torch.ones(K+1))
-                self.temp = Parameter(torch.ones(size=(self.num_heads,K)))
+                self.headwise = Parameter(torch.empty(size=(self.num_heads,K)))
+                torch.nn.init.kaiming_uniform_(self.headwise, a=math.sqrt(5))
             else:
-                self.temp = Parameter(torch.ones(size=(self.num_heads,K+1)))
+                self.hopwise = Parameter(torch.ones(size=(self.num_heads,K+1)))
         else:
-            self.temp = Parameter(torch.ones(K+1))
+            self.hopwise = Parameter(torch.ones(K+1))
 
     def reset_parameters(self):
         if (self.ind_gamma and self.gamma_softmax):
-                torch.nn.init.ones_(self.hopwise)
-        torch.nn.init.ones_(self.temp)
+            torch.nn.init.ones_(self.hopwise)
+            # torch.nn.init.zeros_(self.headwise)
+            torch.nn.init.kaiming_uniform_(self.headwise, a=math.sqrt(5))
+        else:
+            torch.nn.init.ones_(self.hopwise)
         self.input_trans.reset_parameters()
         self.linQ.reset_parameters()
         self.linK.reset_parameters()
@@ -167,12 +172,12 @@ class MHPFGT(torch.nn.Module):
             if (self.gamma_softmax):
                 hidden = V * (self.hopwise[0])
             else:
-                hidden = V * (self.temp[:, 0].unsqueeze(-1))
+                hidden = V * (self.hopwise[:, 0].unsqueeze(-1))
         else:
-            hidden = V * (self.temp[0])
+            hidden = V * (self.hopwise[0])
 
         if ((self.ind_gamma) and (self.gamma_softmax)):
-            layerwise = F.softmax(self.temp, dim=-2)
+            layerwise = F.softmax(self.headwise, dim=-2)
 
         for hop in range(self.K):
             if (self.aggr=='normalized_laplacian'):
@@ -188,9 +193,9 @@ class MHPFGT(torch.nn.Module):
                 if (self.gamma_softmax):
                     gamma = self.hopwise[hop+1] * layerwise[:, hop].unsqueeze(-1)
                 else:
-                    gamma = self.temp[:, hop+1].unsqueeze(-1)
+                    gamma = self.hopwise[:, hop+1].unsqueeze(-1)
             else:
-                gamma = self.temp[hop+1]
+                gamma = self.hopwise[hop+1]
             hidden = hidden + gamma * H
 
         if (self.multi_concat):
