@@ -201,6 +201,6 @@ class MHPFGT(torch.nn.Module):
             hidden = F.dropout(hidden, p=self.dropout, training=self.training)
             hidden = self.output(hidden)
         else:
-            hidden = hidden.mean(dim=-2)
+            hidden = hidden.sum(dim=-2)
 
         return hidden
