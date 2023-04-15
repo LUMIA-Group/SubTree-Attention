@@ -116,8 +116,7 @@ class MHPFGT(torch.nn.Module):
         if (ind_gamma):
             if (gamma_softmax):
                 self.hopwise = Parameter(torch.ones(K+1))
-                self.headwise = Parameter(torch.empty(size=(self.num_heads,K)))
-                torch.nn.init.kaiming_uniform_(self.headwise, a=math.sqrt(5))
+                self.headwise = Parameter(torch.zeros(size=(self.num_heads,K)))
             else:
                 self.hopwise = Parameter(torch.ones(size=(self.num_heads,K+1)))
         else:
@@ -126,8 +125,7 @@ class MHPFGT(torch.nn.Module):
     def reset_parameters(self):
         if (self.ind_gamma and self.gamma_softmax):
             torch.nn.init.ones_(self.hopwise)
-            # torch.nn.init.zeros_(self.headwise)
-            torch.nn.init.kaiming_uniform_(self.headwise, a=math.sqrt(5))
+            torch.nn.init.zeros_(self.headwise)
         else:
             torch.nn.init.ones_(self.hopwise)
         self.input_trans.reset_parameters()
