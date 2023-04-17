@@ -33,7 +33,7 @@ class PFGT(torch.nn.Module):
         self.hopwise = Parameter(torch.ones(K+1, dtype=torch.float))
         # alpha_init = 1. - 1. / (np.arange(K) + 1)
         # self.alpha = Parameter(torch.tensor(alpha_init))
-        self.alpha = Parameter(torch.tensor([0], dtype=torch.float, requires_grad=True))
+        self.alpha = Parameter(torch.tensor([0], dtype=torch.float))
 
     def reset_parameters(self):
         torch.nn.init.ones_(self.hopwise)
@@ -130,7 +130,7 @@ class MHPFGT(torch.nn.Module):
         else:
             self.hopwise = Parameter(torch.ones(K+1))
         
-        self.alpha = Parameter(torch.tensor([0], dtype=torch.float, requires_grad=False))
+        self.alpha = Parameter(torch.tensor([0], dtype=torch.float))
 
     def reset_parameters(self):
         if (self.ind_gamma and self.gamma_softmax):
