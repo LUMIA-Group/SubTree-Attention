@@ -37,8 +37,7 @@ params_config:
   multi_concat: [true]
   ind_gamma: [true]
   gamma_softmax: [true]
-  aggr: ['normalized_laplacian']
-  add_self_loops: [true]
+  aggr: ['random_walk_with_teleportation']
 
   # configs for gnn baseline
   directed: [false]

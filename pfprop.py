@@ -31,7 +31,7 @@ class KeyProp(MessagePassing):
 
 
 
-class MessageProp_normalized_laplacian(MessagePassing):
+class MessageProp_random_walk_with_teleportation(MessagePassing):
     def __init__(self, node_dim=-3):
         super().__init__(aggr='add', node_dim=node_dim)  
 
@@ -45,7 +45,7 @@ class MessageProp_normalized_laplacian(MessagePassing):
 
 
 
-class KeyProp_normalized_laplacian(MessagePassing):
+class KeyProp_random_walk_with_teleportation(MessagePassing):
     def __init__(self, node_dim=-2):
         super().__init__(aggr='add', node_dim=node_dim)  
 

@@ -6,19 +6,15 @@ import sys
 import os
 sys.path.append(os.path.realpath('.'))
 
-import importlib
 import random
 import numpy as np
 import wandb
 import json
 import hashlib
-import tempfile
-import shutil
 import traceback
 import time
 from torch_geometric.utils import to_undirected
 
-from logger import Logger
 from dataset import load_dataset, create_split_idx_lst
 from data_utils import load_fixed_splits
 from pfgnn import PFGT, MHPFGT
@@ -132,14 +128,12 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         assert params['num_heads'] > 0
         if (params['num_heads'] == 1):
             model = PFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
-                        dropout=params['dropout'], K=params['K'], aggr=params['aggr'],
-                        add_self_loops=params['add_self_loops']).to(device)
+                        dropout=params['dropout'], K=params['K'], aggr=params['aggr']).to(device)
         else:
             model = MHPFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
                         dropout=params['dropout'], K=params['K'], num_heads=params['num_heads'],
                         ind_gamma=params['ind_gamma'], gamma_softmax=params['gamma_softmax'], 
-                        multi_concat=params['multi_concat'],aggr=params['aggr'],
-                        add_self_loops=params['add_self_loops']).to(device)
+                        multi_concat=params['multi_concat'],aggr=params['aggr']).to(device)
 
 
         ### Loss function (Single-class, Multi-class) ###
@@ -175,7 +169,14 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
 
         train_idx = split_idx['train'].to(device)
         model.reset_parameters()
-        optimizer = torch.optim.Adam(model.parameters(),weight_decay=params['weight_decay'], lr=params['lr'])
+        no_decay_params = [model.headwise, model.hopwise] if (params["num_heads"]>1 and params["gamma_softmax"] and params["ind_gamma"]) else [model.hopwise]
+        decay_params = [p for p in model.parameters() if id(p) not in (id(param) for param in no_decay_params)]    
+        param_groups = [
+        {"params": no_decay_params, "weight_decay": 0.0},
+        {"params": decay_params, "weight_decay": params["weight_decay"]}
+        ]
+        optimizer = torch.optim.Adam(param_groups, lr=params["lr"])
+
         best_val = float('-inf')
 
         time_start = time.time()
