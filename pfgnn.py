@@ -31,15 +31,11 @@ class PFGT(torch.nn.Module):
         self.cst = 10e-6
 
         self.hopwise = Parameter(torch.ones(K+1, dtype=torch.float))
-        # alpha_init = 1. - 1. / (np.arange(K) + 1)
-        # self.alpha = Parameter(torch.tensor(alpha_init))
-        self.alpha = Parameter(torch.tensor([0], dtype=torch.float))
+        self.alpha = Parameter(torch.zeros(K, dtype=torch.float))
 
     def reset_parameters(self):
         torch.nn.init.ones_(self.hopwise)
         torch.nn.init.zeros_(self.alpha)
-        # for hop in range(self.K):
-        #     self.alpha.data[hop] = 1. - 1. / (hop + 1)
 
     def forward(self, data):
         x = data.graph['node_feat']
@@ -70,13 +66,13 @@ class PFGT(torch.nn.Module):
         for hop in range(self.K):
             if (self.aggr=='random_walk_with_teleportation'):
                 num_nodes = x.size(0)
-                alpha = min(max(0, self.alpha), 1)
-                teleportM = alpha * torch.sum(M, dim=0, keepdim=True) / num_nodes
-                teleportK = alpha * torch.sum(K, dim=0, keepdim=True) / num_nodes
+                alpha = self.alpha.clamp(min=0, max=1)
+                teleportM = alpha[hop] * torch.sum(M, dim=0, keepdim=True) / num_nodes
+                teleportK = alpha[hop] * torch.sum(K, dim=0, keepdim=True) / num_nodes
                 M = self.propM(M, edge_index, norm.view(-1,1,1))
                 K = self.propK(K, edge_index, norm.view(-1,1))
-                M = (1 - alpha) * M + teleportM
-                K = (1 - alpha) * K + teleportK
+                M = (1 - alpha[hop]) * M + teleportM
+                K = (1 - alpha[hop]) * K + teleportK
             else:
                 M = self.propM(M, edge_index)
                 K = self.propK(K, edge_index)         
@@ -130,7 +126,7 @@ class MHPFGT(torch.nn.Module):
         else:
             self.hopwise = Parameter(torch.ones(K+1))
         
-        self.alpha = Parameter(torch.tensor([0], dtype=torch.float))
+        self.alpha = Parameter(torch.zeros(K, dtype=torch.float))
 
     def reset_parameters(self):
         if (self.ind_gamma and self.gamma_softmax):
@@ -189,13 +185,13 @@ class MHPFGT(torch.nn.Module):
         for hop in range(self.K):
             if (self.aggr=='random_walk_with_teleportation'):
                 num_nodes = x.size(0)
-                alpha = min(max(0, self.alpha), 1)
-                teleportM = alpha * torch.sum(M, dim=0, keepdim=True) / num_nodes
-                teleportK = alpha * torch.sum(K, dim=0, keepdim=True) / num_nodes
+                alpha = self.alpha.clamp(min=0, max=1)
+                teleportM = alpha[hop] * torch.sum(M, dim=0, keepdim=True) / num_nodes
+                teleportK = alpha[hop] * torch.sum(K, dim=0, keepdim=True) / num_nodes
                 M = self.propM(M, edge_index, norm.view(-1,1,1,1))
                 K = self.propK(K, edge_index, norm.view(-1,1,1))
-                M = (1 - alpha) * M + teleportM
-                K = (1 - alpha) * K + teleportK
+                M = (1 - alpha[hop]) * M + teleportM
+                K = (1 - alpha[hop]) * K + teleportK
             else:
                 M = self.propM(M, edge_index)
                 K = self.propK(K, edge_index) 
