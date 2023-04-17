@@ -169,7 +169,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
 
         train_idx = split_idx['train'].to(device)
         model.reset_parameters()
-        no_decay_params = [model.headwise, model.hopwise] if (params["num_heads"]>1 and params["gamma_softmax"] and params["ind_gamma"]) else [model.hopwise]
+        no_decay_params = [model.headwise, model.hopwise, model.alpha] if (params["num_heads"]>1 and params["gamma_softmax"] and params["ind_gamma"]) else [model.hopwise, model.alpha]
         decay_params = [p for p in model.parameters() if id(p) not in (id(param) for param in no_decay_params)]    
         param_groups = [
         {"params": no_decay_params, "weight_decay": 0.0},
