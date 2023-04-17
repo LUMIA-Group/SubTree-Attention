@@ -49,9 +49,9 @@ class PFGT(torch.nn.Module):
 
             row, col = edge_index
             deg = degree(col, x.size(0), dtype=x.dtype)
-            deg_inv_sqrt = deg.pow(-0.5)
+            deg_inv_sqrt = deg.pow(-1)
             deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-            norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+            norm = deg_inv_sqrt[row]
 
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = F.relu(self.input_trans(x))
@@ -70,12 +70,13 @@ class PFGT(torch.nn.Module):
         for hop in range(self.K):
             if (self.aggr=='random_walk_with_teleportation'):
                 num_nodes = x.size(0)
-                teleportM = self.alpha * torch.sum(M, dim=0, keepdim=True) / num_nodes
-                teleportK = self.alpha * torch.sum(K, dim=0, keepdim=True) / num_nodes
+                alpha = min(max(0, self.alpha), 1)
+                teleportM = alpha * torch.sum(M, dim=0, keepdim=True) / num_nodes
+                teleportK = alpha * torch.sum(K, dim=0, keepdim=True) / num_nodes
                 M = self.propM(M, edge_index, norm.view(-1,1,1))
                 K = self.propK(K, edge_index, norm.view(-1,1))
-                M = (1 - self.alpha) * M + teleportM
-                K = (1 - self.alpha) * K + teleportK
+                M = (1 - alpha) * M + teleportM
+                K = (1 - alpha) * K + teleportK
             else:
                 M = self.propM(M, edge_index)
                 K = self.propK(K, edge_index)         
@@ -151,17 +152,11 @@ class MHPFGT(torch.nn.Module):
 
         if (self.aggr=='random_walk_with_teleportation'):
 
-            # row, col = edge_index
-            # deg = degree(col, x.size(0), dtype=x.dtype)
-            # deg_inv_sqrt = deg.pow(-1)
-            # deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-            # norm = deg_inv_sqrt[row]
-
             row, col = edge_index
             deg = degree(col, x.size(0), dtype=x.dtype)
-            deg_inv_sqrt = deg.pow(-0.5)
+            deg_inv_sqrt = deg.pow(-1)
             deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-            norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+            norm = deg_inv_sqrt[row]
 
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = F.relu(self.input_trans(x))
@@ -194,12 +189,13 @@ class MHPFGT(torch.nn.Module):
         for hop in range(self.K):
             if (self.aggr=='random_walk_with_teleportation'):
                 num_nodes = x.size(0)
-                teleportM = self.alpha * torch.sum(M, dim=0, keepdim=True) / num_nodes
-                teleportK = self.alpha * torch.sum(K, dim=0, keepdim=True) / num_nodes
+                alpha = min(max(0, self.alpha), 1)
+                teleportM = alpha * torch.sum(M, dim=0, keepdim=True) / num_nodes
+                teleportK = alpha * torch.sum(K, dim=0, keepdim=True) / num_nodes
                 M = self.propM(M, edge_index, norm.view(-1,1,1,1))
                 K = self.propK(K, edge_index, norm.view(-1,1,1))
-                M = (1 - self.alpha) * M + teleportM
-                K = (1 - self.alpha) * K + teleportK
+                M = (1 - alpha) * M + teleportM
+                K = (1 - alpha) * K + teleportK
             else:
                 M = self.propM(M, edge_index)
                 K = self.propK(K, edge_index) 
