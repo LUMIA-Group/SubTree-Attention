@@ -187,7 +187,7 @@ for run in range(args.runs):
     train_idx = split_idx['train'].to(device)
     model.reset_parameters()
 
-    no_decay_params = [model.headwise, model.hopwise, model.alpha] if (args.num_heads>1 and args.gamma_softmax and args.ind_gamma) else [model.hopwise, model.alpha]
+    no_decay_params = [model.headwise, model.hopwise, model.teleport] if (args.num_heads>1 and args.gamma_softmax and args.ind_gamma) else [model.hopwise, model.teleport]
     decay_params = [p for p in model.parameters() if id(p) not in (id(param) for param in no_decay_params)]    
     param_groups = [
     {"params": no_decay_params, "weight_decay": 0.0},

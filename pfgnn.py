@@ -31,11 +31,13 @@ class PFGT(torch.nn.Module):
         self.cst = 10e-6
 
         self.hopwise = Parameter(torch.ones(K+1, dtype=torch.float))
-        self.alpha = Parameter(torch.zeros(K, dtype=torch.float))
+        self.teleport = Parameter(torch.ones(1, dtype=torch.float))
+
 
     def reset_parameters(self):
         torch.nn.init.ones_(self.hopwise)
-        torch.nn.init.uniform_(self.alpha, 0, 1)
+        torch.nn.init.ones_(self.teleport)
+
 
     def forward(self, data):
         x = data.graph['node_feat']
@@ -61,18 +63,20 @@ class PFGT(torch.nn.Module):
 
         # M = K.repeat(1, V.size(1)).view(-1, V.size(1), K.size(1)).transpose(-1, -2) * V.repeat(1, K.size(1)).view(-1, K.size(1), V.size(1))
         M = torch.einsum('ni,nj->nij',[K,V])
+        
+        num_nodes = x.size(0)
+        teleportM = torch.sum(M, dim=0, keepdim=True) / num_nodes
+        teleportK = torch.sum(K, dim=0, keepdim=True) / num_nodes
+        teleportH = torch.einsum('ni,nij->nj',[Q,teleportM])
+        teleportC = torch.einsum('ni,ni->n',[Q,teleportK]).unsqueeze(-1) + self.cst
+        teleportH = teleportH / teleportC
+
 
         hidden = V*(self.hopwise[0])
         for hop in range(self.K):
             if (self.aggr=='random_walk_with_teleportation'):
-                num_nodes = x.size(0)
-                alpha = torch.abs(self.alpha)
-                teleportM = alpha[hop] * torch.sum(M, dim=0, keepdim=True) / num_nodes
-                teleportK = alpha[hop] * torch.sum(K, dim=0, keepdim=True) / num_nodes
                 M = self.propM(M, edge_index, norm.view(-1,1,1))
                 K = self.propK(K, edge_index, norm.view(-1,1))
-                M = (1 - alpha[hop]) * M + teleportM
-                K = (1 - alpha[hop]) * K + teleportK
             else:
                 M = self.propM(M, edge_index)
                 K = self.propK(K, edge_index)         
@@ -84,6 +88,8 @@ class PFGT(torch.nn.Module):
             H = H / C
             gamma = self.hopwise[hop+1]
             hidden = hidden + gamma*H
+
+        hidden = hidden + self.teleport*teleportH
 
         return hidden
 
@@ -126,7 +132,7 @@ class MHPFGT(torch.nn.Module):
         else:
             self.hopwise = Parameter(torch.ones(K+1))
         
-        self.alpha = Parameter(torch.zeros(K, dtype=torch.float))
+        self.teleport = Parameter(torch.ones(1))
 
     def reset_parameters(self):
         if (self.ind_gamma and self.gamma_softmax):
@@ -140,7 +146,7 @@ class MHPFGT(torch.nn.Module):
         self.linV.reset_parameters()
         if (self.multi_concat):
             self.output.reset_parameters()
-        torch.nn.init.uniform_(self.alpha, 0, 1)
+        torch.nn.init.ones_(self.teleport)
 
     def forward(self, data):
         x = data.graph['node_feat']
@@ -182,16 +188,18 @@ class MHPFGT(torch.nn.Module):
         if ((self.ind_gamma) and (self.gamma_softmax)):
             layerwise = F.softmax(self.headwise, dim=-2)
 
+        num_nodes = x.size(0)
+        teleportM = torch.sum(M, dim=0, keepdim=True) / num_nodes
+        teleportK = torch.sum(K, dim=0, keepdim=True) / num_nodes
+        teleportH = torch.einsum('nhi,nhij->nhj',[Q,teleportM])
+        teleportC = torch.einsum('nhi,nhi->nh',[Q,teleportK]).unsqueeze(-1) + self.cst
+        teleportH = teleportH / teleportC
+        teleportH = teleportH.sum(dim=-2)
+
         for hop in range(self.K):
             if (self.aggr=='random_walk_with_teleportation'):
-                num_nodes = x.size(0)
-                alpha = torch.abs(self.alpha)
-                teleportM = alpha[hop] * torch.sum(M, dim=0, keepdim=True) / num_nodes
-                teleportK = alpha[hop] * torch.sum(K, dim=0, keepdim=True) / num_nodes
                 M = self.propM(M, edge_index, norm.view(-1,1,1,1))
                 K = self.propK(K, edge_index, norm.view(-1,1,1))
-                M = (1 - alpha[hop]) * M + teleportM
-                K = (1 - alpha[hop]) * K + teleportK
             else:
                 M = self.propM(M, edge_index)
                 K = self.propK(K, edge_index) 
@@ -213,5 +221,7 @@ class MHPFGT(torch.nn.Module):
             hidden = self.output(hidden)
         else:
             hidden = hidden.sum(dim=-2)
+    
+        hidden = hidden + self.teleport*teleportH
 
         return hidden
