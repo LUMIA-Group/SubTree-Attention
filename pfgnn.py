@@ -35,6 +35,10 @@ class PFGT(torch.nn.Module):
 
 
     def reset_parameters(self):
+        self.input_trans.reset_parameters()
+        self.linQ.reset_parameters()
+        self.linK.reset_parameters()
+        self.linV.reset_parameters()
         torch.nn.init.ones_(self.hopwise)
         torch.nn.init.ones_(self.teleport)
 

@@ -36,6 +36,7 @@ parser.add_argument('--device', type=int, default=0)
 parser.add_argument('--seed', type=int, default=42)
 parser.add_argument('--epochs', type=int, default=500)
 parser.add_argument('--eval_step', type=int, default=1)
+parser.add_argument('--patience', type=int, default=100)
 parser.add_argument('--cpu', action='store_true')
 parser.add_argument('--runs', type=int, default=1)
 parser.add_argument('--train_prop', type=float, default=.5,
@@ -197,6 +198,9 @@ for run in range(args.runs):
 
     best_val = float('-inf')
 
+    patience = args.patience
+    patience_counter = 0
+
     time_start = time.time()
 
     for epoch in range(args.epochs):
@@ -230,16 +234,23 @@ for run in range(args.runs):
 
             if result[1] > best_val:
                 best_val = result[1]
+                patience_counter = 0
                 if args.save_model:
                     if not (os.path.exists(args.model_dir)):
                         os.makedirs(args.model_dir)
                     torch.save(model.state_dict(), args.model_dir + f'{args.dataset}-{args.method}.pkl')
+            else:
+                patience_counter += 1 
 
             print(f'Epoch: {epoch:02d}, '
                   f'Loss: {loss:.4f}, '
                   f'Train: {100 * result[0]:.2f}%, '
                   f'Valid: {100 * result[1]:.2f}%, '
                   f'Test: {100 * result[2]:.2f}%')
+            
+            if patience_counter == patience:
+                print('Early stopping!')
+                break
             
     time_end = time.time()
     print(f'Run: {run + 1:02d}, ' f'Time: {time_end - time_start:.4f}s')

@@ -30,7 +30,8 @@ class Logger(object):
             print(f'Final Test: {result[ind, 2]:.2f}')
             self.test=result[ind, 2]
         else:
-            result = 100 * torch.tensor(self.results)
+            results = self.pad_lists(self.results)
+            result = 100 * torch.tensor(results)
 
             best_results = []
             for r in result:
@@ -66,3 +67,13 @@ class Logger(object):
         with open(out_path,'a') as f:
             f.write(info)
             f.write(f'test acc:{self.test}\n')
+
+    def pad_lists(self,lists):
+        max_length = max(len(lst) for lst in lists)
+
+        padded_lists = []
+        for lst in lists:
+            padded_lst = lst + [(0,0,0,torch.tensor(0,device=lst[0][3].device),torch.tensor(0,device=lst[0][3].device))] * (max_length - len(lst))
+            padded_lists.append(padded_lst)
+
+        return padded_lists

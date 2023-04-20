@@ -27,6 +27,7 @@ params_config:
   epochs: [2000]
   eval_step: [1]
   log_freq: [1]
+  patience: [200]
   metric: ["acc"]
 
   # configs for PFGNN
