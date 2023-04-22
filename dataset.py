@@ -12,7 +12,7 @@ import scipy.io
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
 
-from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits, laplacian_positional_encoding
+from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, rand_train_test_idx_ANSGT, laplacian_positional_encoding
 
 from torch_geometric.datasets import Planetoid, Amazon, Coauthor
 from torch_geometric.utils import degree
@@ -57,7 +57,7 @@ class NCDataset(object):
         self.graph = {}
         self.label = None
 
-    def get_idx_split(self, split_type='random', train_prop=.5, valid_prop=.25, label_num_per_class=20):
+    def get_idx_split(self, split_type='random', train_prop=.5, valid_prop=.25):
         """
         split_type: 'random' for random splitting, 'class' for splitting with equal node num per class
         train_prop: The proportion of dataset for train split. Between 0 and 1.
@@ -68,12 +68,13 @@ class NCDataset(object):
         if split_type == 'random':
             ignore_negative = False if self.name == 'ogbn-proteins' else True
             train_idx, valid_idx, test_idx = rand_train_test_idx(
-                self.label, train_prop=train_prop, valid_prop=valid_prop, ignore_negative=ignore_negative)
+                self.label, train_prop=.5, valid_prop=.25, ignore_negative=ignore_negative)
             split_idx = {'train': train_idx,
                          'valid': valid_idx,
                          'test': test_idx}
-        elif split_type == 'class':
-            train_idx, valid_idx, test_idx = class_rand_splits(self.label, label_num_per_class=label_num_per_class)
+        elif split_type == 'ANSGT':
+            ignore_negative = False if self.name == 'ogbn-proteins' else True
+            train_idx, valid_idx, test_idx = rand_train_test_idx_ANSGT(self.label, train_prop=.6, valid_prop=.2, ignore_negative=ignore_negative)
             split_idx = {'train': train_idx,
                          'valid': valid_idx,
                          'test': test_idx}
@@ -91,8 +92,8 @@ class NCDataset(object):
 
 
 def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
-    assert exp_setting in ('nodeformer', 'nagphormer')
-    if exp_setting == 'nagphormer':
+    assert exp_setting in ('nodeformer', 'nagphormer', 'ANSGT')
+    if exp_setting in ('nagphormer',):
         if dataname in {"pubmed", "corafull", "computer", "photo", "cs", "physics","cora", "citeseer"}:
 
             file_path = data_dir+"nagphormer/"+dataname+".pt"
@@ -136,13 +137,9 @@ def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
                 dataset.graph['node_feat'] = node_feat
 
 
-    elif exp_setting == 'nodeformer':
+    elif exp_setting in ('ANSGT', 'nodeformer'):
         if dataname in ('cora', 'citeseer', 'pubmed'):
             dataset = load_planetoid_dataset(data_dir, dataname)
-        elif dataname in ('amazon-photo', 'amazon-computer'):
-            dataset = load_amazon_dataset(data_dir, dataname)
-        elif dataname in ('coauthor-cs', 'coauthor-physics'):
-            dataset = load_coauthor_dataset(data_dir, dataname)
         elif dataname in ('chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin'):
             dataset = load_geom_gcn_dataset(data_dir, dataname)
         elif dataname == 'ogbn-proteins':
@@ -151,30 +148,8 @@ def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
             dataset = load_ogb_dataset(data_dir, dataname)
         elif dataname == 'amazon2m':
             dataset = load_amazon2m_dataset(data_dir)
-        elif dataname == 'twitch-e':
-            if sub_dataname not in ('DE', 'ENGB', 'ES', 'FR', 'PTBR', 'RU', 'TW'):
-                print('Invalid sub_dataname, deferring to DE graph')
-                sub_dataname = 'DE'
-            dataset = load_twitch_dataset(data_dir, sub_dataname)
-        elif dataname == 'fb100':
-            if sub_dataname not in ('Penn94', 'Amherst41', 'Cornell5', 'Johns Hopkins55', 'Reed98'):
-                print('Invalid sub_dataname, deferring to Penn94 graph')
-                sub_dataname = 'Penn94'
-            dataset = load_fb100_dataset(data_dir, sub_dataname)
-        elif dataname == 'deezer-europe':
-            dataset = load_deezer_dataset(data_dir)
-        elif dataname == 'arxiv-year':
-            dataset = load_arxiv_year_dataset(data_dir)
         elif dataname == 'pokec':
             dataset = load_pokec_mat(data_dir)
-        elif dataname == 'snap-patents':
-            dataset = load_snap_patents_mat(data_dir)
-        elif dataname == 'yelp-chi':
-            dataset = load_yelpchi_dataset(data_dir)
-        elif dataname == 'mini':
-            dataset =load_mini_imagenet(data_dir)
-        elif dataname == '20news':
-            dataset=load_20news(data_dir)
         else:
             raise ValueError('Invalid dataname')
         
@@ -186,140 +161,6 @@ def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
 
     return dataset
 
-
-def load_twitch_dataset(data_dir, sub_dataset):
-    assert sub_dataset in ('DE', 'ENGB', 'ES', 'FR', 'PTBR', 'RU', 'TW'), 'Invalid dataset'
-
-    filepath = data_dir + f"twitch/{sub_dataset}"
-    label = []
-    node_ids = []
-    src = []
-    targ = []
-    uniq_ids = set()
-    with open(f"{filepath}/musae_{sub_dataset}_target.csv", 'r') as f:
-        reader = csv.reader(f)
-        next(reader)
-        for row in reader:
-            node_id = int(row[5])
-            # handle FR case of non-unique rows
-            if node_id not in uniq_ids:
-                uniq_ids.add(node_id)
-                label.append(int(row[2] == "True"))
-                node_ids.append(int(row[5]))
-
-    node_ids = np.array(node_ids, dtype=np.int)
-    with open(f"{filepath}/musae_{sub_dataset}_edges.csv", 'r') as f:
-        reader = csv.reader(f)
-        next(reader)
-        for row in reader:
-            src.append(int(row[0]))
-            targ.append(int(row[1]))
-    with open(f"{filepath}/musae_{sub_dataset}_features.json", 'r') as f:
-        j = json.load(f)
-    src = np.array(src)
-    targ = np.array(targ)
-    label = np.array(label)
-    inv_node_ids = {node_id: idx for (idx, node_id) in enumerate(node_ids)}
-    reorder_node_ids = np.zeros_like(node_ids)
-    for i in range(label.shape[0]):
-        reorder_node_ids[i] = inv_node_ids[i]
-
-    n = label.shape[0]
-    A = scipy.sparse.csr_matrix((np.ones(len(src)),
-                                 (np.array(src), np.array(targ))),
-                                shape=(n, n))
-    features = np.zeros((n, 3170))
-    for node, feats in j.items():
-        if int(node) >= n:
-            continue
-        features[int(node), np.array(feats, dtype=int)] = 1
-    new_label = label[reorder_node_ids]
-    label = new_label
-
-    dataset = NCDataset(sub_dataset)
-    edge_index = torch.tensor(A.nonzero(), dtype=torch.long)
-    node_feat = torch.tensor(features, dtype=torch.float)
-    num_nodes = node_feat.shape[0]
-    dataset.graph = {'edge_index': edge_index,
-                     'edge_feat': None,
-                     'node_feat': node_feat,
-                     'num_nodes': num_nodes}
-    dataset.label = torch.tensor(label)
-    return dataset
-
-
-def load_fb100_dataset(data_dir, sub_dataset):
-    feature_vals_all = np.empty((0, 6))
-    for f in ['Penn94', 'Amherst41', 'Cornell5', 'Johns Hopkins55', 'Reed98']:
-        mat = scipy.io.loadmat(data_dir + 'facebook100/' + f + '.mat')
-        A = mat['A']
-        metadata = mat['local_info']
-        metadata = metadata.astype(np.int)
-        feature_vals = np.hstack(
-            (np.expand_dims(metadata[:, 0], 1), metadata[:, 2:]))
-        feature_vals_all = np.vstack(
-            (feature_vals_all, feature_vals)
-        )
-
-    mat = scipy.io.loadmat(data_dir + 'facebook100/' + sub_dataset + '.mat')
-    A = mat['A']
-    metadata = mat['local_info']
-    dataset = NCDataset(sub_dataset)
-    edge_index = torch.tensor(A.nonzero(), dtype=torch.long)
-    metadata = metadata.astype(np.int)
-    label = metadata[:, 1] - 1  # gender label, -1 means unlabeled
-
-    # make features into one-hot encodings
-    feature_vals = np.hstack(
-        (np.expand_dims(metadata[:, 0], 1), metadata[:, 2:]))
-    features = np.empty((A.shape[0], 0))
-    for col in range(feature_vals.shape[1]):
-        feat_col = feature_vals[:, col]
-        feat_onehot = label_binarize(feat_col, classes=np.unique(feature_vals_all[:, col]))
-        features = np.hstack((features, feat_onehot))
-
-    node_feat = torch.tensor(features, dtype=torch.float)
-    num_nodes = metadata.shape[0]
-    dataset.graph = {'edge_index': edge_index,
-                     'edge_feat': None,
-                     'node_feat': node_feat,
-                     'num_nodes': num_nodes}
-    dataset.label = torch.tensor(label)
-    dataset.label = torch.where(dataset.label > 0, 1, 0)
-    return dataset
-
-
-def load_deezer_dataset(data_dir):
-    filename = 'deezer-europe'
-    dataset = NCDataset(filename)
-    deezer = scipy.io.loadmat(f'{data_dir}deezer/deezer-europe.mat')
-
-    A, label, features = deezer['A'], deezer['label'], deezer['features']
-    edge_index = torch.tensor(A.nonzero(), dtype=torch.long)
-    node_feat = torch.tensor(features.todense(), dtype=torch.float)
-    label = torch.tensor(label, dtype=torch.long).squeeze()
-    num_nodes = label.shape[0]
-
-    dataset.graph = {'edge_index': edge_index,
-                     'edge_feat': None,
-                     'node_feat': node_feat,
-                     'num_nodes': num_nodes}
-    dataset.label = label
-    return dataset
-
-
-def load_arxiv_year_dataset(data_dir, nclass=5):
-    filename = 'arxiv-year'
-    dataset = NCDataset(filename)
-    ogb_dataset = NodePropPredDataset(name='ogbn-arxiv', root=f'{data_dir}/ogb')
-    dataset.graph = ogb_dataset.graph
-    dataset.graph['edge_index'] = torch.as_tensor(dataset.graph['edge_index'])
-    dataset.graph['node_feat'] = torch.as_tensor(dataset.graph['node_feat'])
-
-    label = even_quantile_labels(
-        dataset.graph['node_year'].flatten(), nclass, verbose=False)
-    dataset.label = torch.as_tensor(label).reshape(-1, 1)
-    return dataset
 
 
 def load_proteins_dataset(data_dir):
@@ -410,56 +251,6 @@ def load_pokec_mat(data_dir):
     return dataset
 
 
-def load_snap_patents_mat(data_dir, nclass=5):
-    if not path.exists(f'{data_dir}snap_patents.mat'):
-        p = dataset_drive_url['snap-patents']
-        gdd.download_file_from_google_drive(
-            file_id=dataset_drive_url['snap-patents'], \
-            dest_path=f'{data_dir}snap_patents.mat', showsize=True)
-
-    fulldata = scipy.io.loadmat(f'{data_dir}snap_patents.mat')
-
-    dataset = NCDataset('snap_patents')
-    edge_index = torch.tensor(fulldata['edge_index'], dtype=torch.long)
-    node_feat = torch.tensor(
-        fulldata['node_feat'].todense(), dtype=torch.float)
-    num_nodes = int(fulldata['num_nodes'])
-    dataset.graph = {'edge_index': edge_index,
-                     'edge_feat': None,
-                     'node_feat': node_feat,
-                     'num_nodes': num_nodes}
-
-    years = fulldata['years'].flatten()
-    label = even_quantile_labels(years, nclass, verbose=False)
-    dataset.label = torch.tensor(label, dtype=torch.long)
-
-    return dataset
-
-
-def load_yelpchi_dataset(data_dir):
-    if not path.exists(f'{data_dir}YelpChi.mat'):
-        gdd.download_file_from_google_drive(
-            file_id=dataset_drive_url['yelp-chi'], \
-            dest_path=f'{data_dir}YelpChi.mat', showsize=True)
-    fulldata = scipy.io.loadmat(f'{data_dir}YelpChi.mat')
-    A = fulldata['homo']
-    edge_index = np.array(A.nonzero())
-    node_feat = fulldata['features']
-    label = np.array(fulldata['label'], dtype=np.int).flatten()
-    num_nodes = node_feat.shape[0]
-
-    dataset = NCDataset('YelpChi')
-    edge_index = torch.tensor(edge_index, dtype=torch.long)
-    node_feat = torch.tensor(node_feat.todense(), dtype=torch.float)
-    dataset.graph = {'edge_index': edge_index,
-                     'node_feat': node_feat,
-                     'edge_feat': None,
-                     'num_nodes': num_nodes}
-    label = torch.tensor(label, dtype=torch.long)
-    dataset.label = label
-    return dataset
-
-
 def load_planetoid_dataset(data_dir, name):
     transform = T.NormalizeFeatures()
     torch_dataset = Planetoid(root=f'{data_dir}Planetoid',
@@ -477,60 +268,6 @@ def load_planetoid_dataset(data_dir, name):
     dataset.train_idx = torch.where(data.train_mask)[0]
     dataset.valid_idx = torch.where(data.val_mask)[0]
     dataset.test_idx = torch.where(data.test_mask)[0]
-
-    dataset.graph = {'edge_index': edge_index,
-                     'node_feat': node_feat,
-                     'edge_feat': None,
-                     'num_nodes': num_nodes}
-    dataset.label = label
-
-    return dataset
-
-
-def load_amazon_dataset(data_dir, name):
-    transform = T.NormalizeFeatures()
-    if name == 'amazon-photo':
-        torch_dataset = Amazon(root=f'{data_dir}Amazon',
-                               name='Photo', transform=transform)
-    elif name == 'amazon-computer':
-        torch_dataset = Amazon(root=f'{data_dir}Amazon',
-                               name='Computers', transform=transform)
-    # torch_dataset = Planetoid(root=f'{DATAPATH}Planetoid', name=name)
-    data = torch_dataset[0]
-
-    edge_index = data.edge_index
-    node_feat = data.x
-    label = data.y
-    num_nodes = data.num_nodes
-
-    dataset = NCDataset(name)
-
-    dataset.graph = {'edge_index': edge_index,
-                     'node_feat': node_feat,
-                     'edge_feat': None,
-                     'num_nodes': num_nodes}
-    dataset.label = label
-
-    return dataset
-
-
-def load_coauthor_dataset(data_dir, name):
-    transform = T.NormalizeFeatures()
-    if name == 'coauthor-cs':
-        torch_dataset = Coauthor(root=f'{data_dir}Coauthor',
-                                 name='CS', transform=transform)
-    elif name == 'coauthor-physics':
-        torch_dataset = Coauthor(root=f'{data_dir}Coauthor',
-                                 name='Physics', transform=transform)
-    # torch_dataset = Planetoid(root=f'{DATAPATH}Planetoid', name=name)
-    data = torch_dataset[0]
-
-    edge_index = data.edge_index
-    node_feat = data.x
-    label = data.y
-    num_nodes = data.num_nodes
-
-    dataset = NCDataset(name)
 
     dataset.graph = {'edge_index': edge_index,
                      'node_feat': node_feat,
@@ -621,78 +358,6 @@ def load_geom_gcn_dataset(data_dir, name):
     return dataset
 
 
-def load_mini_imagenet(data_dir):
-    import pickle as pkl
-
-    dataset = NCDataset('mini_imagenet')
-
-    data = pkl.load(open(data_dir + 'mini_imagenet/mini_imagenet.pkl', 'rb'))
-    x_train = data['x_train']
-    x_val = data['x_val']
-    x_test = data['x_test']
-    y_train = data['y_train']
-    y_val = data['y_val']
-    y_test = data['y_test']
-
-    features = torch.cat((x_train, x_val, x_test), dim=0)
-    labels = np.concatenate((y_train, y_val, y_test))
-    num_nodes = features.shape[0]
-
-    dataset.graph = {'edge_index': None,
-                     'edge_feat': None,
-                     'node_feat': features,
-                     'num_nodes': num_nodes}
-    dataset.label = torch.LongTensor(labels)
-    return dataset
-
-
-def load_20news(data_dir, n_remove=0):
-    from sklearn.datasets import fetch_20newsgroups
-    from sklearn.feature_extraction.text import CountVectorizer
-    from sklearn.feature_extraction.text import TfidfTransformer
-    import pickle as pkl
-
-    if path.exists(data_dir + '20news/20news.pkl'):
-        data = pkl.load(open(data_dir + '20news/20news.pkl', 'rb'))
-    else:
-        categories = ['alt.atheism',
-                      'comp.sys.ibm.pc.hardware',
-                      'misc.forsale',
-                      'rec.autos',
-                      'rec.sport.hockey',
-                      'sci.crypt',
-                      'sci.electronics',
-                      'sci.med',
-                      'sci.space',
-                      'talk.politics.guns']
-        data = fetch_20newsgroups(subset='all', categories=categories)
-        # with open(data_dir + '20news/20news.pkl', 'wb') as f:
-        #     pkl.dump(data, f, pkl.HIGHEST_PROTOCOL)
-
-    vectorizer = CountVectorizer(stop_words='english', min_df=0.05)
-    X_counts = vectorizer.fit_transform(data.data).toarray()
-    transformer = TfidfTransformer(smooth_idf=False)
-    features = transformer.fit_transform(X_counts).todense()
-    features = torch.Tensor(features)
-    y = data.target
-    y = torch.LongTensor(y)
-
-    num_nodes = features.shape[0]
-
-    if n_remove > 0:
-        num_nodes-=n_remove
-        features=features[:num_nodes,:]
-        y=y[:num_nodes]
-
-    dataset = NCDataset('20news')
-    dataset.graph = {'edge_index': None,
-                     'edge_feat': None,
-                     'node_feat': features,
-                     'num_nodes': num_nodes}
-    dataset.label = torch.LongTensor(y)
-
-    return dataset
-
 def create_split_idx_lst(yaml_file):
 
     dict_yaml = yaml.load(open(f'yamls/{yaml_file}.yaml').read(), Loader=yaml.Loader)['params_config']
@@ -700,19 +365,25 @@ def create_split_idx_lst(yaml_file):
 
     args = Namespace(**dict_yaml)
 
-    dataset = load_dataset(args.data_dir, args.dataset, 'nodeformer', args.pe, args.pe_dim, args.sub_dataset)
+    dataset = load_dataset(args.data_dir, args.dataset, args.exp_setting, args.pe, args.pe_dim, args.sub_dataset)
 
     # get the splits for all runs
     assert args.rand_split or args.rand_split_class
 
-    if args.rand_split:
+    if (args.exp_setting == 'nodeformer'):
+        if args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
+            split_idx_lst = [dataset.load_fixed_splits()
+                            for _ in range(args.runs)]
         split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
-                        for _ in range(args.num_runs)]
-    elif args.rand_split_class:
-        split_idx_lst = [dataset.get_idx_split(split_type='class', label_num_per_class=args.label_num_per_class)
+                        for _ in range(args.runs)]
+    elif (args.exp_setting == 'nagphormer'):
+        split_idx_lst = [dataset.split_idx]
+    elif (args.exp_setting == 'ANSGT'):
+        print(f'using ANSGT split for {args.dataset}')
+        split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='ANSGT')
                         for _ in range(args.num_runs)]
 
-    rand_split_path = '{}rand_split/{}'.format(args.data_dir, args.dataset) if args.rand_split else '{}rand_split_class/{}'.format(args.data_dir, args.dataset)
+    rand_split_path = '{}{}/rand_split/{}'.format(args.data_dir, args.exp_setting, args.dataset)
     target_path = os.path.join(rand_split_path,f'{args.num_runs}run_{args.seed}seed_split_idx_lst.pt')
     if not os.path.exists(target_path):
         if not os.path.exists(rand_split_path):

@@ -1,5 +1,6 @@
 import os
 from collections import defaultdict
+import random
 
 import torch
 import torch.nn.functional as F
@@ -27,6 +28,36 @@ def rand_train_test_idx(label, train_prop=.5, valid_prop=.25, ignore_negative=Tr
     train_indices = perm[:train_num]
     val_indices = perm[train_num:train_num + valid_num]
     test_indices = perm[train_num + valid_num:]
+
+    if not ignore_negative:
+        return train_indices, val_indices, test_indices
+
+    train_idx = labeled_nodes[train_indices]
+    valid_idx = labeled_nodes[val_indices]
+    test_idx = labeled_nodes[test_indices]
+
+    return train_idx, valid_idx, test_idx
+
+
+def rand_train_test_idx_ANSGT(label, train_prop=.6, valid_prop=.2, ignore_negative=True):
+    """ randomly splits label into train/valid/test splits """
+
+    random.seed(2022)
+
+    if ignore_negative:
+        labeled_nodes = torch.where(label != -1)[0]
+    else:
+        labeled_nodes = label
+
+    n = labeled_nodes.shape[0]
+    train_num = int(n * train_prop)
+    valid_num = int(n * valid_prop)
+
+    all_idx = np.arange(n)
+    random.shuffle(all_idx)
+    train_indices = all_idx[:train_num]
+    val_indices = all_idx[train_num:train_num+valid_num]
+    test_indices = all_idx[train_num+valid_num:]
 
     if not ignore_negative:
         return train_indices, val_indices, test_indices

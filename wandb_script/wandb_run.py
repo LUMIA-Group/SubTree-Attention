@@ -15,7 +15,7 @@ import traceback
 import time
 from torch_geometric.utils import to_undirected
 
-from dataset import load_dataset, create_split_idx_lst
+from dataset import load_dataset
 from data_utils import load_fixed_splits
 from pfgnn import PFGT, MHPFGT
 from eval import evaluate, eval_acc, eval_rocauc, eval_f1
@@ -72,9 +72,6 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         # Fix seed
         fixSeed(seed)
 
-        # Create split_idx_lst
-        create_split_idx_lst(params['dataset'])
-
         # Select device
         device = torch.device("cuda:" + str(gpu_index)
                               ) if torch.cuda.is_available() else torch.device("cpu")
@@ -89,22 +86,24 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
             dataset.label = dataset.label.unsqueeze(1)
         dataset.label = dataset.label.to(device)
 
+        rand_split_path = '{}{}/rand_split/{}'.format(params['data_dir'], params['exp_setting'], params['dataset'])
+
         # get the splits for all runs
         if (params['exp_setting'] == 'nodeformer'):
-            if params['rand_split'] or params['rand_split_class']:
-                rand_split_path = '{}rand_split/{}'.format(params['data_dir'], params['dataset']) if params['rand_split'] else '{}rand_split_class/{}'.format(params['data_dir'], params['dataset'])
+            if params['rand_split']:
                 target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
                 assert os.path.exists(target_rand_split_path)
                 split_idx_lst = torch.load(target_rand_split_path)
             elif params['dataset'] in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
                 split_idx_lst = [dataset.load_fixed_splits()
                                 for _ in range(params["num_runs"])]
-            else:
-                split_idx_lst = load_fixed_splits(
-                    params['data_dir'], dataset, name=params['dataset'], protocol=params['protocol'])
         elif (params['exp_setting'] == 'nagphormer'):
             print('using nagphormer exp setting !')
             split_idx_lst = [dataset.split_idx]
+        elif (params['exp_setting'] == 'ANSGT'):
+                target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
+                assert os.path.exists(target_rand_split_path)
+                split_idx_lst = torch.load(target_rand_split_path)
 
         # Get num_nodes and num_edges
         n = dataset.graph['num_nodes']
@@ -160,16 +159,19 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         run = params['runs']
 
         if (params['exp_setting'] == 'nodeformer'):
-            if params['dataset'] in ['cora', 'citeseer', 'pubmed'] and params['protocol'] == 'semi':
+            if params['dataset'] in ['cora', 'citeseer', 'pubmed']:
                 split_idx = split_idx_lst[0]
             else:
                 split_idx = split_idx_lst[run]
         elif (params['exp_setting'] == 'nagphormer'):
             split_idx = split_idx_lst[0]
+        elif (params['exp_setting'] == 'ANSGT'):
+            print('using ANSGT exp setting !')
+            split_idx = split_idx_lst[run]
 
         train_idx = split_idx['train'].to(device)
         model.reset_parameters()
-        no_decay_params = [model.headwise, model.hopwise, model.alpha] if (params["num_heads"]>1 and params["gamma_softmax"] and params["ind_gamma"]) else [model.hopwise, model.alpha]
+        no_decay_params = [model.headwise, model.hopwise, model.teleport] if (params["num_heads"]>1 and params["gamma_softmax"] and params["ind_gamma"]) else [model.hopwise, model.teleport]
         decay_params = [p for p in model.parameters() if id(p) not in (id(param) for param in no_decay_params)]    
         param_groups = [
         {"params": no_decay_params, "weight_decay": 0.0},
@@ -178,6 +180,9 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         optimizer = torch.optim.Adam(param_groups, lr=params["lr"])
 
         best_val = float('-inf')
+
+        patience = params['patience']
+        patience_counter = 0
 
         time_start = time.time()
 
@@ -213,11 +218,14 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
 
                 if result[1] > best_val:
                     best_val = result[1]
+                    patience_counter = 0
                     best_test_metric = result[2]
                     if params['save_model']:
                         if not (os.path.exists(params['model_dir'])):
                             os.makedirs(params['model_dir'])
                         torch.save(model.state_dict(), params['model_dir'] + f'{params["dataset"]}-{params["method"]}.pkl')
+                else:
+                    patience_counter += 1 
 
 
                 # print(f'Epoch: {epoch:02d}, '
@@ -229,7 +237,10 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
             if epoch % params['log_freq'] == 0:
                 wandb.log({'metric/train': result[0], 'metric/val': result[1], 'metric/test': result[2], 'loss/train': train_loss, 'loss/val': result[3], 'loss/test': result[4]})
 
-            
+            if patience_counter == patience:
+                print('Early stopping!')
+                break
+
         time_end = time.time()
         print(f'Run: {run + 1:02d}, ' f'Time: {time_end - time_start:.4f}s')
         print('Final metric is [%s]' % (best_test_metric))

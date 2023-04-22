@@ -1,0 +1,1 @@
+python -m debugpy --listen 60261 --wait-for-client main.py --dataset cora --rand_split --metric acc --method pfgnn --lr 0.001 --pe --pe_dim 3 --weight_decay 5e-4 --hidden_channels 32 --K 10 --runs 1 --epochs 2000 --device 0

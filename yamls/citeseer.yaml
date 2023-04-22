@@ -9,7 +9,7 @@ params_config:
 
   # configs for dataset
   exp_setting: ["ANSGT"]
-  dataset: ["cora"]
+  dataset: ["citeseer"]
   sub_dataset: [""] 
   data_dir: ["../data/"]
   train_prop: [.6]

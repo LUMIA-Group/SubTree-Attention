@@ -33,30 +33,24 @@ parser.add_argument('--dataset', type=str, default='cora')
 parser.add_argument('--sub_dataset', type=str, default='')
 parser.add_argument('--data_dir', type=str, default='../data/')
 parser.add_argument('--device', type=int, default=0)
-parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--epochs', type=int, default=500)
+parser.add_argument('--seed', type=int, default=2022)
+parser.add_argument('--epochs', type=int, default=2000)
 parser.add_argument('--eval_step', type=int, default=1)
-parser.add_argument('--patience', type=int, default=100)
+parser.add_argument('--patience', type=int, default=200)
 parser.add_argument('--cpu', action='store_true')
 parser.add_argument('--runs', type=int, default=1)
-parser.add_argument('--train_prop', type=float, default=.5,
+parser.add_argument('--train_prop', type=float, default=.6,
                     help='training label proportion')
-parser.add_argument('--valid_prop', type=float, default=.25,
+parser.add_argument('--valid_prop', type=float, default=.2,
                     help='validation label proportion')
-parser.add_argument('--protocol', type=str, default='semi',
-                    help='protocol for cora datasets with fixed splits, semi or supervised')
 parser.add_argument('--rand_split', action='store_true',
                     help='use random splits')
-parser.add_argument('--rand_split_class', action='store_true',
-                    help='use random splits with a fixed number of labeled nodes for each class')
-parser.add_argument('--label_num_per_class', type=int,
-                    default=20, help='labeled nodes randomly selected')
 parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'rocauc', 'f1'],
                     help='evaluation metric')
 parser.add_argument('--save_model', action='store_true',
                     help='whether to save model')
 parser.add_argument('--model_dir', type=str, default='exp/model/')
-parser.add_argument('--exp_setting', type=str, default='nodeformer')
+parser.add_argument('--exp_setting', type=str, default='ANSGT')
 
 # hyper-parameter for model arch and training
 parser.add_argument('--hidden_channels', type=int, default=32)
@@ -102,21 +96,17 @@ dataset.label = dataset.label.to(device)
 
 # get the splits for all runs
 if (args.exp_setting == 'nodeformer'):
-    if args.rand_split:
-        split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
-                        for _ in range(args.runs)]
-    elif args.rand_split_class:
-        split_idx_lst = [dataset.get_idx_split(split_type='class', label_num_per_class=args.label_num_per_class)
-                        for _ in range(args.runs)]
-    elif args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
+    if args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
         split_idx_lst = [dataset.load_fixed_splits()
                         for _ in range(args.runs)]
-    else:
-        split_idx_lst = load_fixed_splits(
-            args.data_dir, dataset, name=args.dataset, protocol=args.protocol)
+    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
+                    for _ in range(args.runs)]
 elif (args.exp_setting == 'nagphormer'):
     split_idx_lst = [dataset.split_idx]
-
+elif (args.exp_setting == 'ANSGT'):
+    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='ANSGT')
+                    for _ in range(args.runs)]
+    
 
 # Get num_nodes and num_edges
 n = dataset.graph['num_nodes']
@@ -178,13 +168,16 @@ print('MODEL:', model)
 # Training loop
 for run in range(args.runs):
     if (args.exp_setting == 'nodeformer'):
-        if args.dataset in ['cora', 'citeseer', 'pubmed'] and args.protocol == 'semi':
+        if args.dataset in ['cora', 'citeseer', 'pubmed']:
             split_idx = split_idx_lst[0]
         else:
             split_idx = split_idx_lst[run]
     elif (args.exp_setting == 'nagphormer'):
         print('using nagphormer exp setting !')
         split_idx = split_idx_lst[0]
+    elif (args.exp_setting == 'ANSGT'):
+        print('using ANSGT exp setting !')
+        split_idx = split_idx_lst[run]
     train_idx = split_idx['train'].to(device)
     model.reset_parameters()
 
