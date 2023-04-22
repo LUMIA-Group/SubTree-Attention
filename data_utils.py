@@ -42,7 +42,7 @@ def rand_train_test_idx(label, train_prop=.5, valid_prop=.25, ignore_negative=Tr
 def rand_train_test_idx_ANSGT(label, train_prop=.6, valid_prop=.2, ignore_negative=True):
     """ randomly splits label into train/valid/test splits """
 
-    random.seed(2022)
+    # random.seed(2022)
 
     if ignore_negative:
         labeled_nodes = torch.where(label != -1)[0]
