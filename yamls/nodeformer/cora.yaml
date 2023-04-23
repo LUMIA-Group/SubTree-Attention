@@ -18,10 +18,10 @@ params_config:
 
   # configs for model arch and training
   hidden_channels: [32,64,128,256]
-  dropout: [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]
+  dropout: [0.0,0.2,0.4,0.6,0.8]
   lr: [0.001,0.01]
-  weight_decay: [0.0001,0.0005,0.001]
-  epochs: [2000]
+  weight_decay: [0.0001,0.0005,0.001,0.005]
+  epochs: [3000]
   eval_step: [1]
   log_freq: [1]
   patience: [200]
