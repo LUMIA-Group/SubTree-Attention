@@ -416,6 +416,7 @@ def create_split_idx_lst(exp_setting, yaml_file):
     dict_yaml = {k:v[0] for k,v in dict_yaml.items()}
 
     args = Namespace(**dict_yaml)
+    args.pe = False
 
     dataset = load_dataset(args.data_dir, args.dataset, args.exp_setting, args.pe, args.pe_dim, args.sub_dataset)
 
