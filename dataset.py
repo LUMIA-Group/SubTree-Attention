@@ -12,7 +12,7 @@ import scipy.io
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
 
-from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, rand_train_test_idx_602020, laplacian_positional_encoding
+from data_utils import rand_train_test_idx_502525, even_quantile_labels, to_sparse_tensor, dataset_drive_url, rand_train_test_idx_602020, laplacian_positional_encoding
 
 from torch_geometric.datasets import Planetoid, Amazon, Coauthor, CitationFull
 from torch_geometric.utils import degree
@@ -67,7 +67,7 @@ class NCDataset(object):
 
         if split_type == 'random':
             ignore_negative = False if self.name == 'ogbn-proteins' else True
-            train_idx, valid_idx, test_idx = rand_train_test_idx(
+            train_idx, valid_idx, test_idx = rand_train_test_idx_502525(
                 self.label, train_prop=.5, valid_prop=.25, ignore_negative=ignore_negative)
             split_idx = {'train': train_idx,
                          'valid': valid_idx,
@@ -109,6 +109,8 @@ def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
         dataset = load_Amazon_dataset(data_dir, dataname)
     elif dataname in ('cs', 'physics'):
         dataset = load_Coauthor_dataset(data_dir, dataname)
+    elif dataname == 'deezer-europe':
+        dataset = load_deezer_dataset(data_dir)
     elif dataname == 'ogbn-proteins':
         dataset = load_proteins_dataset(data_dir)
     elif dataname in ('ogbn-arxiv', 'ogbn-products'):
@@ -131,7 +133,7 @@ def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
 def load_citation_full_dataset(data_dir, name):
     if name == 'corafull': name = 'cora'
     transform = T.NormalizeFeatures()
-    torch_dataset = CitationFull(root=f'{data_dir}Planetoid',
+    torch_dataset = CitationFull(root=f'{data_dir}Citation_Full',
                               name=name, transform=transform)
     # torch_dataset = Planetoid(root=f'{DATAPATH}Planetoid', name=name)
     data = torch_dataset[0]
@@ -154,7 +156,7 @@ def load_citation_full_dataset(data_dir, name):
 
 def load_Amazon_dataset(data_dir, name):
     transform = T.NormalizeFeatures()
-    torch_dataset = Amazon(root=f'{data_dir}Planetoid',
+    torch_dataset = Amazon(root=f'{data_dir}Amazon',
                               name=name, transform=transform)
     # torch_dataset = Planetoid(root=f'{DATAPATH}Planetoid', name=name)
     data = torch_dataset[0]
@@ -176,7 +178,7 @@ def load_Amazon_dataset(data_dir, name):
 
 def load_Coauthor_dataset(data_dir, name):
     transform = T.NormalizeFeatures()
-    torch_dataset = Coauthor(root=f'{data_dir}Planetoid',
+    torch_dataset = Coauthor(root=f'{data_dir}Coauthor',
                               name=name, transform=transform)
     # torch_dataset = Planetoid(root=f'{DATAPATH}Planetoid', name=name)
     data = torch_dataset[0]
@@ -253,7 +255,7 @@ def load_amazon2m_dataset(data_dir):
         else:
             os.makedirs(dir)
             tensor_split_idx['train'], tensor_split_idx['valid'], tensor_split_idx['test'] \
-                = rand_train_test_idx(dataset.label, train_prop=train_prop, valid_prop=val_prop)
+                = rand_train_test_idx_502525(dataset.label, train_prop=train_prop, valid_prop=val_prop)
             np.savetxt(dir + '/amazon2m_train.txt', tensor_split_idx['train'], fmt='%d')
             np.savetxt(dir + '/amazon2m_valid.txt', tensor_split_idx['valid'], fmt='%d')
             np.savetxt(dir + '/amazon2m_test.txt', tensor_split_idx['test'], fmt='%d')
@@ -299,16 +301,32 @@ def load_planetoid_dataset(data_dir, name):
 
     dataset = NCDataset(name)
 
-    dataset.train_idx = torch.where(data.train_mask)[0]
-    dataset.valid_idx = torch.where(data.val_mask)[0]
-    dataset.test_idx = torch.where(data.test_mask)[0]
-
     dataset.graph = {'edge_index': edge_index,
                      'node_feat': node_feat,
                      'edge_feat': None,
                      'num_nodes': num_nodes}
     dataset.label = label
 
+    return dataset
+
+
+
+def load_deezer_dataset(data_dir):
+    filename = 'deezer-europe'
+    dataset = NCDataset(filename)
+    deezer = scipy.io.loadmat(f'{data_dir}deezer/deezer-europe.mat')
+
+    A, label, features = deezer['A'], deezer['label'], deezer['features']
+    edge_index = torch.tensor(A.nonzero(), dtype=torch.long)
+    node_feat = torch.tensor(features.todense(), dtype=torch.float)
+    label = torch.tensor(label, dtype=torch.long).squeeze()
+    num_nodes = label.shape[0]
+
+    dataset.graph = {'edge_index': edge_index,
+                     'edge_feat': None,
+                     'node_feat': node_feat,
+                     'num_nodes': num_nodes}
+    dataset.label = label
     return dataset
 
 
@@ -405,11 +423,12 @@ def create_split_idx_lst(exp_setting, yaml_file):
     assert args.rand_split or args.rand_split_class
 
     if (args.exp_setting == 'nodeformer'):
+        print(f'using nodeformer split for {args.dataset}')
         if args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
             split_idx_lst = [dataset.load_fixed_splits()
-                            for _ in range(args.runs)]
+                            for _ in range(args.num_runs)]
         split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
-                        for _ in range(args.runs)]
+                        for _ in range(args.num_runs)]
     elif (args.exp_setting == 'nagphormer'):
         print(f'using nagphormer split for {args.dataset}')
         split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='nagphormer')
@@ -419,7 +438,7 @@ def create_split_idx_lst(exp_setting, yaml_file):
         split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='ANSGT')
                         for _ in range(args.num_runs)]
 
-    rand_split_path = '{}{}/rand_split/{}'.format(args.data_dir, args.exp_setting, args.dataset)
+    rand_split_path = '{}splits/{}/rand_split/{}'.format(args.data_dir, args.exp_setting, args.dataset)
     target_path = os.path.join(rand_split_path,f'{args.num_runs}run_{args.seed}seed_split_idx_lst.pt')
     if not os.path.exists(target_path):
         if not os.path.exists(rand_split_path):

@@ -1,0 +1,51 @@
+params_config:
+  # general configs
+  method: ["pfgnn"] 
+
+  agent_package: [100]
+  ignore_keys: [['seed','index_runs','index_split']]
+  save_model: [false]
+  model_dir: ["exp/model/"]
+
+  # configs for dataset
+  exp_setting: ["nodeformer"]
+  dataset: ["cora"]
+  sub_dataset: [""] 
+  data_dir: ["../data/"]
+  train_prop: [.6]
+  valid_prop: [.2]
+  rand_split: [true]
+
+  # configs for model arch and training
+  hidden_channels: [32,64,128,256]
+  dropout: [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]
+  lr: [0.001,0.005,0.01]
+  weight_decay: [0.0001,0.0005,0.001,0.005]
+  epochs: [2000]
+  eval_step: [1]
+  log_freq: [1]
+  patience: [200]
+  metric: ["acc"]
+
+  # configs for PFGNN
+  K: [3,5,10]
+  pe: [true,false]
+  pe_dim: [3,5]
+  num_heads: [1,2,3,4,6,8]
+  multi_concat: [true,false]
+  ind_gamma: [true,false]
+  gamma_softmax: [true,false]
+  aggr: ['random_walk_with_teleportation']
+
+  # configs for gnn baseline
+  directed: [false]
+
+  # configs for seed and number of runs
+  seed: [2022]
+  num_runs: [3]
+
+sweep_config:
+  method: "grid"
+  metric:
+    name: "metric/final"
+    goal: "maximize"

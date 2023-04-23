@@ -12,7 +12,7 @@ from torch_geometric.utils import degree, to_scipy_sparse_matrix
 from torch_sparse import SparseTensor
 
 
-def rand_train_test_idx(label, train_prop=.5, valid_prop=.25, ignore_negative=True):
+def rand_train_test_idx_502525(label, train_prop=.5, valid_prop=.25, ignore_negative=True):
     """ randomly splits label into train/valid/test splits """
     if ignore_negative:
         labeled_nodes = torch.where(label != -1)[0]
