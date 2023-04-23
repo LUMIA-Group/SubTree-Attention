@@ -12,15 +12,15 @@ params_config:
   dataset: ["deezer-europe"]
   sub_dataset: [""] 
   data_dir: ["../data/"]
-  train_prop: [.6]
-  valid_prop: [.2]
+  train_prop: [.5]
+  valid_prop: [.25]
   rand_split: [true]
 
   # configs for model arch and training
   hidden_channels: [32,64,128,256]
   dropout: [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8]
-  lr: [0.001,0.005,0.01]
-  weight_decay: [0.0001,0.0005,0.001,0.005]
+  lr: [0.001,0.01]
+  weight_decay: [0.0001,0.0005,0.001]
   epochs: [2000]
   eval_step: [1]
   log_freq: [1]
@@ -29,20 +29,20 @@ params_config:
 
   # configs for PFGNN
   K: [3,5,10]
-  pe: [true,false]
-  pe_dim: [3,5]
+  pe: [true]
+  pe_dim: [3]
   num_heads: [1,2,3,4,6,8]
-  multi_concat: [true,false]
-  ind_gamma: [true,false]
-  gamma_softmax: [true,false]
+  multi_concat: [true]
+  ind_gamma: [true]
+  gamma_softmax: [true]
   aggr: ['random_walk_with_teleportation']
 
   # configs for gnn baseline
   directed: [false]
 
   # configs for seed and number of runs
-  seed: [2022]
-  num_runs: [3]
+  seed: [42]
+  num_runs: [5]
 
 sweep_config:
   method: "grid"
