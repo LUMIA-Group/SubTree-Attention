@@ -9,4 +9,5 @@ random.seed(2022)
 
 for dataset in ['cora', 'citeseer', 'pubmed', 'chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin']:
     # Create split_idx_lst
-    create_split_idx_lst(dataset)
+    exp_setting = 'ANSGT'
+    create_split_idx_lst(exp_setting, dataset)

@@ -12,9 +12,9 @@ import scipy.io
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
 
-from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, rand_train_test_idx_ANSGT, laplacian_positional_encoding
+from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, rand_train_test_idx_602020, laplacian_positional_encoding
 
-from torch_geometric.datasets import Planetoid, Amazon, Coauthor
+from torch_geometric.datasets import Planetoid, Amazon, Coauthor, CitationFull
 from torch_geometric.utils import degree
 import os
 from os import path
@@ -74,7 +74,13 @@ class NCDataset(object):
                          'test': test_idx}
         elif split_type == 'ANSGT':
             ignore_negative = False if self.name == 'ogbn-proteins' else True
-            train_idx, valid_idx, test_idx = rand_train_test_idx_ANSGT(self.label, train_prop=.6, valid_prop=.2, ignore_negative=ignore_negative)
+            train_idx, valid_idx, test_idx = rand_train_test_idx_602020(self.label, train_prop=.6, valid_prop=.2, ignore_negative=ignore_negative)
+            split_idx = {'train': train_idx,
+                         'valid': valid_idx,
+                         'test': test_idx}
+        elif split_type == 'nagphormer':
+            ignore_negative = False if self.name == 'ogbn-proteins' else True
+            train_idx, valid_idx, test_idx = rand_train_test_idx_602020(self.label, train_prop=.6, valid_prop=.2, ignore_negative=ignore_negative)
             split_idx = {'train': train_idx,
                          'valid': valid_idx,
                          'test': test_idx}
@@ -93,74 +99,102 @@ class NCDataset(object):
 
 def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
     assert exp_setting in ('nodeformer', 'nagphormer', 'ANSGT')
-    if exp_setting in ('nagphormer',):
-        if dataname in {"pubmed", "corafull", "computer", "photo", "cs", "physics","cora", "citeseer"}:
-
-            file_path = data_dir+"nagphormer/"+dataname+".pt"
-
-            data_list = torch.load(file_path)
-
-            # data_list = [adj, features, labels, idx_train, idx_val, idx_test]
-            adj = data_list[0]
-            features = data_list[1]
-            labels = data_list[2]
-            idx_train = data_list[3]
-            idx_val = data_list[4]
-            idx_test = data_list[5]
-
-            num_nodes = adj.size(0)
-            edge_index = adj.coalesce().indices()
-            edge_index = torch.stack([edge_index[0], edge_index[1]], dim=0)
-
-            dataset = NCDataset(dataname)
-
-            split_idx = {'train': torch.tensor(idx_train),
-                         'valid': torch.tensor(idx_val),
-                         'test': torch.tensor(idx_test)}
-            
-            dataset.split_idx = split_idx
-
-            # dataset.train_idx = idx_train
-            # dataset.valid_idx = idx_val
-            # dataset.test_idx = idx_test
-
-            dataset.graph = {'edge_index': edge_index,
-                            'node_feat': features,
-                            'edge_feat': None,
-                            'num_nodes': num_nodes}
-            dataset.label = labels
-
-            if (pe):
-                print(f'use positional encoding with dim {pe_dim}')
-                lpe = laplacian_positional_encoding(dataset, pe_dim) 
-                node_feat = torch.cat((features, lpe), dim=1)
-                dataset.graph['node_feat'] = node_feat
-
-
-    elif exp_setting in ('ANSGT', 'nodeformer'):
-        if dataname in ('cora', 'citeseer', 'pubmed'):
-            dataset = load_planetoid_dataset(data_dir, dataname)
-        elif dataname in ('chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin'):
-            dataset = load_geom_gcn_dataset(data_dir, dataname)
-        elif dataname == 'ogbn-proteins':
-            dataset = load_proteins_dataset(data_dir)
-        elif dataname in ('ogbn-arxiv', 'ogbn-products'):
-            dataset = load_ogb_dataset(data_dir, dataname)
-        elif dataname == 'amazon2m':
-            dataset = load_amazon2m_dataset(data_dir)
-        elif dataname == 'pokec':
-            dataset = load_pokec_mat(data_dir)
-        else:
-            raise ValueError('Invalid dataname')
-        
-        if (pe):
-            print(f'use positional encoding with dim {pe_dim}')
-            lpe = laplacian_positional_encoding(dataset, pe_dim) 
-            node_feat = torch.cat((dataset.graph['node_feat'], lpe), dim=1)
-            dataset.graph['node_feat'] = node_feat
+    if dataname in ('cora', 'citeseer', 'pubmed'):
+        dataset = load_planetoid_dataset(data_dir, dataname)
+    elif dataname in ('chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin'):
+        dataset = load_geom_gcn_dataset(data_dir, dataname)
+    elif dataname in ('corafull'):
+        dataset = load_citation_full_dataset(data_dir, dataname)
+    elif dataname in ('computers', 'photo'):
+        dataset = load_Amazon_dataset(data_dir, dataname)
+    elif dataname in ('cs', 'physics'):
+        dataset = load_Coauthor_dataset(data_dir, dataname)
+    elif dataname == 'ogbn-proteins':
+        dataset = load_proteins_dataset(data_dir)
+    elif dataname in ('ogbn-arxiv', 'ogbn-products'):
+        dataset = load_ogb_dataset(data_dir, dataname)
+    elif dataname == 'amazon2m':
+        dataset = load_amazon2m_dataset(data_dir)
+    elif dataname == 'pokec':
+        dataset = load_pokec_mat(data_dir)
+    else:
+        raise ValueError('Invalid dataname')
+    
+    if (pe):
+        print(f'use positional encoding with dim {pe_dim}')
+        lpe = laplacian_positional_encoding(dataset, pe_dim) 
+        node_feat = torch.cat((dataset.graph['node_feat'], lpe), dim=1)
+        dataset.graph['node_feat'] = node_feat
 
     return dataset
 
+def load_citation_full_dataset(data_dir, name):
+    if name == 'corafull': name = 'cora'
+    transform = T.NormalizeFeatures()
+    torch_dataset = CitationFull(root=f'{data_dir}Planetoid',
+                              name=name, transform=transform)
+    # torch_dataset = Planetoid(root=f'{DATAPATH}Planetoid', name=name)
+    data = torch_dataset[0]
+
+    edge_index = data.edge_index
+    node_feat = data.x
+    label = data.y
+    num_nodes = data.num_nodes
+
+    dataset = NCDataset(name)
+
+    dataset.graph = {'edge_index': edge_index,
+                     'node_feat': node_feat,
+                     'edge_feat': None,
+                     'num_nodes': num_nodes}
+    dataset.label = label
+
+    return dataset
+
+
+def load_Amazon_dataset(data_dir, name):
+    transform = T.NormalizeFeatures()
+    torch_dataset = Amazon(root=f'{data_dir}Planetoid',
+                              name=name, transform=transform)
+    # torch_dataset = Planetoid(root=f'{DATAPATH}Planetoid', name=name)
+    data = torch_dataset[0]
+
+    edge_index = data.edge_index
+    node_feat = data.x
+    label = data.y
+    num_nodes = data.num_nodes
+
+    dataset = NCDataset(name)
+
+    dataset.graph = {'edge_index': edge_index,
+                     'node_feat': node_feat,
+                     'edge_feat': None,
+                     'num_nodes': num_nodes}
+    dataset.label = label
+
+    return dataset
+
+def load_Coauthor_dataset(data_dir, name):
+    transform = T.NormalizeFeatures()
+    torch_dataset = Coauthor(root=f'{data_dir}Planetoid',
+                              name=name, transform=transform)
+    # torch_dataset = Planetoid(root=f'{DATAPATH}Planetoid', name=name)
+    data = torch_dataset[0]
+
+    edge_index = data.edge_index
+    node_feat = data.x
+    label = data.y
+    num_nodes = data.num_nodes
+
+    dataset = NCDataset(name)
+
+    dataset.graph = {'edge_index': edge_index,
+                     'node_feat': node_feat,
+                     'edge_feat': None,
+                     'num_nodes': num_nodes}
+    dataset.label = label
+
+    return dataset
 
 
 def load_proteins_dataset(data_dir):
@@ -358,9 +392,9 @@ def load_geom_gcn_dataset(data_dir, name):
     return dataset
 
 
-def create_split_idx_lst(yaml_file):
+def create_split_idx_lst(exp_setting, yaml_file):
 
-    dict_yaml = yaml.load(open(f'yamls/{yaml_file}.yaml').read(), Loader=yaml.Loader)['params_config']
+    dict_yaml = yaml.load(open(f'yamls/{exp_setting}/{yaml_file}.yaml').read(), Loader=yaml.Loader)['params_config']
     dict_yaml = {k:v[0] for k,v in dict_yaml.items()}
 
     args = Namespace(**dict_yaml)
@@ -377,7 +411,9 @@ def create_split_idx_lst(yaml_file):
         split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
                         for _ in range(args.runs)]
     elif (args.exp_setting == 'nagphormer'):
-        split_idx_lst = [dataset.split_idx]
+        print(f'using nagphormer split for {args.dataset}')
+        split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='nagphormer')
+                        for _ in range(args.num_runs)]
     elif (args.exp_setting == 'ANSGT'):
         print(f'using ANSGT split for {args.dataset}')
         split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='ANSGT')

@@ -39,7 +39,7 @@ def rand_train_test_idx(label, train_prop=.5, valid_prop=.25, ignore_negative=Tr
     return train_idx, valid_idx, test_idx
 
 
-def rand_train_test_idx_ANSGT(label, train_prop=.6, valid_prop=.2, ignore_negative=True):
+def rand_train_test_idx_602020(label, train_prop=.6, valid_prop=.2, ignore_negative=True):
     """ randomly splits label into train/valid/test splits """
 
     # random.seed(2022)

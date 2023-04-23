@@ -99,7 +99,9 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
                                 for _ in range(params["num_runs"])]
         elif (params['exp_setting'] == 'nagphormer'):
             print('using nagphormer exp setting !')
-            split_idx_lst = [dataset.split_idx]
+            target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
+            assert os.path.exists(target_rand_split_path)
+            split_idx_lst = torch.load(target_rand_split_path)
         elif (params['exp_setting'] == 'ANSGT'):
                 target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
                 assert os.path.exists(target_rand_split_path)
@@ -164,7 +166,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
             else:
                 split_idx = split_idx_lst[run]
         elif (params['exp_setting'] == 'nagphormer'):
-            split_idx = split_idx_lst[0]
+            split_idx = split_idx_lst[run]
         elif (params['exp_setting'] == 'ANSGT'):
             print('using ANSGT exp setting !')
             split_idx = split_idx_lst[run]

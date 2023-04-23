@@ -33,7 +33,7 @@ parser.add_argument('--dataset', type=str, default='cora')
 parser.add_argument('--sub_dataset', type=str, default='')
 parser.add_argument('--data_dir', type=str, default='../data/')
 parser.add_argument('--device', type=int, default=0)
-parser.add_argument('--seed', type=int, default=2022)
+parser.add_argument('--seed', type=int, default=3407)
 parser.add_argument('--epochs', type=int, default=2000)
 parser.add_argument('--eval_step', type=int, default=1)
 parser.add_argument('--patience', type=int, default=200)
@@ -50,7 +50,7 @@ parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'rocauc
 parser.add_argument('--save_model', action='store_true',
                     help='whether to save model')
 parser.add_argument('--model_dir', type=str, default='exp/model/')
-parser.add_argument('--exp_setting', type=str, default='ANSGT')
+parser.add_argument('--exp_setting', type=str, default='nagphormer')
 
 # hyper-parameter for model arch and training
 parser.add_argument('--hidden_channels', type=int, default=32)
@@ -102,7 +102,8 @@ if (args.exp_setting == 'nodeformer'):
     split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
                     for _ in range(args.runs)]
 elif (args.exp_setting == 'nagphormer'):
-    split_idx_lst = [dataset.split_idx]
+    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='nagphormer')
+                    for _ in range(args.runs)]
 elif (args.exp_setting == 'ANSGT'):
     split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='ANSGT')
                     for _ in range(args.runs)]
@@ -174,7 +175,7 @@ for run in range(args.runs):
             split_idx = split_idx_lst[run]
     elif (args.exp_setting == 'nagphormer'):
         print('using nagphormer exp setting !')
-        split_idx = split_idx_lst[0]
+        split_idx = split_idx_lst[run]
     elif (args.exp_setting == 'ANSGT'):
         print('using ANSGT exp setting !')
         split_idx = split_idx_lst[run]
