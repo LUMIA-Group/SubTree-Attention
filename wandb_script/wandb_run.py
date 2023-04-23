@@ -86,7 +86,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
             dataset.label = dataset.label.unsqueeze(1)
         dataset.label = dataset.label.to(device)
 
-        rand_split_path = '{}{}/rand_split/{}'.format(params['data_dir'], params['exp_setting'], params['dataset'])
+        rand_split_path = '{}splits/{}/rand_split/{}'.format(params['data_dir'], params['exp_setting'], params['dataset'])
 
         # get the splits for all runs
         if (params['exp_setting'] == 'nodeformer'):

@@ -1,1 +1,1 @@
-python wandb_script/agents.py --entity=syhuang_sjtu --project=PFGNNTest --sweep_id=96tzv7ew --gpu_allocate=0:1 --wandb_base=remote --mode=parallel --save_model=False
+python wandb_script/agents.py --entity=syhuang_sjtu --project=PFGNNTest --sweep_id=0mmgtbs7 --gpu_allocate=0:1 --wandb_base=remote --mode=parallel --save_model=False
