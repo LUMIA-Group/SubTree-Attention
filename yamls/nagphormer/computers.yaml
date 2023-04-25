@@ -17,7 +17,7 @@ params_config:
   rand_split: [true]
 
   # configs for model arch and training
-  hidden_channels: [32,64,128,256]
+  hidden_channels: [64]
   dropout: [0.0,0.2,0.4,0.6,0.8]
   lr: [0.001,0.01]
   weight_decay: [0.0001,0.0005,0.001,0.005]
