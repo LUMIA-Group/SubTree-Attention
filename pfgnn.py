@@ -5,28 +5,24 @@ import torch.nn.functional as F
 import numpy as np
 from torch_geometric.utils import degree
 
-from pfprop import MessageProp, KeyProp, MessageProp_random_walk_with_teleportation, KeyProp_random_walk_with_teleportation
+from pfprop import MessageProp_random_walk, KeyProp_random_walk
 
 
 class PFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, aggr):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K,):
         super(PFGT, self).__init__()
         self.input_trans = Linear(num_features, hidden_channels)
         self.linQ = Linear(hidden_channels, hidden_channels)
         self.linK = Linear(hidden_channels, hidden_channels)
         self.linV = Linear(hidden_channels, num_classes)
 
-        if (aggr=='random_walk_with_teleportation'):
-            self.propM = MessageProp_random_walk_with_teleportation(node_dim=-3)
-            self.propK = KeyProp_random_walk_with_teleportation(node_dim=-2)        
-        else:
-            self.propM = MessageProp(aggr=aggr, node_dim=-3)
-            self.propK = KeyProp(aggr=aggr, node_dim=-2)
+
+        self.propM = MessageProp_random_walk(node_dim=-3)
+        self.propK = KeyProp_random_walk(node_dim=-2)        
 
         self.c = hidden_channels
         self.dropout = dropout
         self.K = K
-        self.aggr = aggr
 
         self.cst = 10e-6
 
@@ -47,13 +43,12 @@ class PFGT(torch.nn.Module):
         x = data.graph['node_feat']
         edge_index = data.graph['edge_index']
 
-        if (self.aggr=='random_walk_with_teleportation'):
 
-            row, col = edge_index
-            deg = degree(col, x.size(0), dtype=x.dtype)
-            deg_inv_sqrt = deg.pow(-1)
-            deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-            norm = deg_inv_sqrt[row]
+        row, col = edge_index
+        deg = degree(col, x.size(0), dtype=x.dtype)
+        deg_inv_sqrt = deg.pow(-1)
+        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+        norm = deg_inv_sqrt[row]
 
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = F.relu(self.input_trans(x))
@@ -78,12 +73,10 @@ class PFGT(torch.nn.Module):
 
         hidden = V*(self.hopwise[0])
         for hop in range(self.K):
-            if (self.aggr=='random_walk_with_teleportation'):
-                M = self.propM(M, edge_index, norm.view(-1,1,1))
-                K = self.propK(K, edge_index, norm.view(-1,1))
-            else:
-                M = self.propM(M, edge_index)
-                K = self.propK(K, edge_index)         
+
+            M = self.propM(M, edge_index, norm.view(-1,1,1))
+            K = self.propK(K, edge_index, norm.view(-1,1))
+       
             # H = (Q.repeat(1, M.size(-1)).view(-1, M.size(-1),
                 #  Q.size(-1)).transpose(-1, -2) * M).sum(dim=-2)
             H = torch.einsum('ni,nij->nj',[Q,M])
@@ -99,7 +92,7 @@ class PFGT(torch.nn.Module):
 
 
 class MHPFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, num_heads, ind_gamma, gamma_softmax, multi_concat, aggr):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, num_heads, ind_gamma, gamma_softmax, multi_concat):
         super(MHPFGT, self).__init__()
         self.headc = headc = hidden_channels // num_heads
         self.input_trans = Linear(num_features, hidden_channels)
@@ -109,12 +102,10 @@ class MHPFGT(torch.nn.Module):
         if (multi_concat):
             self.output = Linear(num_classes * num_heads, num_classes)
 
-        if (aggr=='random_walk_with_teleportation'):
-            self.propM = MessageProp_random_walk_with_teleportation(node_dim=-4)
-            self.propK = KeyProp_random_walk_with_teleportation(node_dim=-3)        
-        else:
-            self.propM = MessageProp(aggr=aggr, node_dim=-4)
-            self.propK = KeyProp(aggr=aggr, node_dim=-3)
+
+        self.propM = MessageProp_random_walk(node_dim=-4)
+        self.propK = KeyProp_random_walk(node_dim=-3)        
+
 
         self.dropout = dropout
         self.K = K
@@ -123,7 +114,6 @@ class MHPFGT(torch.nn.Module):
         self.multi_concat = multi_concat
         self.ind_gamma = ind_gamma
         self.gamma_softmax = gamma_softmax
-        self.aggr = aggr
 
         self.cst = 10e-6
 
@@ -156,13 +146,13 @@ class MHPFGT(torch.nn.Module):
         x = data.graph['node_feat']
         edge_index = data.graph['edge_index']
 
-        if (self.aggr=='random_walk_with_teleportation'):
 
-            row, col = edge_index
-            deg = degree(col, x.size(0), dtype=x.dtype)
-            deg_inv_sqrt = deg.pow(-1)
-            deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
-            norm = deg_inv_sqrt[row]
+
+        row, col = edge_index
+        deg = degree(col, x.size(0), dtype=x.dtype)
+        deg_inv_sqrt = deg.pow(-1)
+        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+        norm = deg_inv_sqrt[row]
 
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = F.relu(self.input_trans(x))
@@ -201,12 +191,10 @@ class MHPFGT(torch.nn.Module):
         teleportH = teleportH.sum(dim=-2)
 
         for hop in range(self.K):
-            if (self.aggr=='random_walk_with_teleportation'):
-                M = self.propM(M, edge_index, norm.view(-1,1,1,1))
-                K = self.propK(K, edge_index, norm.view(-1,1,1))
-            else:
-                M = self.propM(M, edge_index)
-                K = self.propK(K, edge_index) 
+
+            M = self.propM(M, edge_index, norm.view(-1,1,1,1))
+            K = self.propK(K, edge_index, norm.view(-1,1,1))
+
             H = torch.einsum('nhi,nhij->nhj', [Q, M])
             C = torch.einsum('nhi,nhi->nh', [Q, K]).unsqueeze(-1) + self.cst
             H = H / C

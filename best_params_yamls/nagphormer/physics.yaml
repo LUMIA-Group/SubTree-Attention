@@ -35,7 +35,6 @@ params_config:
   multi_concat: [false]
   ind_gamma: [true]
   gamma_softmax: [true]
-  aggr: ['random_walk_with_teleportation']
 
   # configs for gnn baseline
   directed: [false]
