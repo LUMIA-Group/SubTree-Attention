@@ -35,7 +35,8 @@ params_config:
   multi_concat: [false]
   ind_gamma: [true]
   gamma_softmax: [true]
-
+  global_attn: [true]
+ 
   # configs for gnn baseline
   directed: [false]
 

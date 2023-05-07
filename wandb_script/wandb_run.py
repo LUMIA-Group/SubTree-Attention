@@ -129,12 +129,12 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         assert params['num_heads'] > 0
         if (params['num_heads'] == 1):
             model = PFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
-                        dropout=params['dropout'], K=params['K']).to(device)
+                        dropout=params['dropout'], K=params['K'], global_attn=params['global_attn']).to(device)
         else:
             model = MHPFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
                         dropout=params['dropout'], K=params['K'], num_heads=params['num_heads'],
                         ind_gamma=params['ind_gamma'], gamma_softmax=params['gamma_softmax'], 
-                        multi_concat=params['multi_concat']).to(device)
+                        multi_concat=params['multi_concat'], global_attn=params['global_attn']).to(device)
 
 
         ### Loss function (Single-class, Multi-class) ###

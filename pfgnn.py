@@ -9,7 +9,7 @@ from pfprop import MessageProp_random_walk, KeyProp_random_walk
 
 
 class PFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K,):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, global_attn):
         super(PFGT, self).__init__()
         self.input_trans = Linear(num_features, hidden_channels)
         self.linQ = Linear(hidden_channels, hidden_channels)
@@ -28,7 +28,7 @@ class PFGT(torch.nn.Module):
 
         self.hopwise = Parameter(torch.ones(K+1, dtype=torch.float))
         self.teleport = Parameter(torch.ones(1, dtype=torch.float))
-
+        self.global_attn = global_attn
 
     def reset_parameters(self):
         self.input_trans.reset_parameters()
@@ -63,12 +63,13 @@ class PFGT(torch.nn.Module):
         # M = K.repeat(1, V.size(1)).view(-1, V.size(1), K.size(1)).transpose(-1, -2) * V.repeat(1, K.size(1)).view(-1, K.size(1), V.size(1))
         M = torch.einsum('ni,nj->nij',[K,V])
         
-        num_nodes = x.size(0)
-        teleportM = torch.sum(M, dim=0, keepdim=True) / num_nodes
-        teleportK = torch.sum(K, dim=0, keepdim=True) / num_nodes
-        teleportH = torch.einsum('ni,nij->nj',[Q,teleportM])
-        teleportC = torch.einsum('ni,ni->n',[Q,teleportK]).unsqueeze(-1) + self.cst
-        teleportH = teleportH / teleportC
+        if (self.global_attn):
+            num_nodes = x.size(0)
+            teleportM = torch.sum(M, dim=0, keepdim=True) / num_nodes
+            teleportK = torch.sum(K, dim=0, keepdim=True) / num_nodes
+            teleportH = torch.einsum('ni,nij->nj',[Q,teleportM])
+            teleportC = torch.einsum('ni,ni->n',[Q,teleportK]).unsqueeze(-1) + self.cst
+            teleportH = teleportH / teleportC
 
 
         hidden = V*(self.hopwise[0])
@@ -86,13 +87,14 @@ class PFGT(torch.nn.Module):
             gamma = self.hopwise[hop+1]
             hidden = hidden + gamma*H
 
-        hidden = hidden + self.teleport*teleportH
+        if (self.global_attn):
+            hidden = hidden + self.teleport*teleportH
 
         return hidden
 
 
 class MHPFGT(torch.nn.Module):
-    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, num_heads, ind_gamma, gamma_softmax, multi_concat):
+    def __init__(self, num_features, num_classes, hidden_channels, dropout, K, num_heads, ind_gamma, gamma_softmax, multi_concat, global_attn):
         super(MHPFGT, self).__init__()
         self.headc = headc = hidden_channels // num_heads
         self.input_trans = Linear(num_features, hidden_channels)
@@ -114,6 +116,7 @@ class MHPFGT(torch.nn.Module):
         self.multi_concat = multi_concat
         self.ind_gamma = ind_gamma
         self.gamma_softmax = gamma_softmax
+        self.global_attn = global_attn
 
         self.cst = 10e-6
 
@@ -182,13 +185,14 @@ class MHPFGT(torch.nn.Module):
         if ((self.ind_gamma) and (self.gamma_softmax)):
             layerwise = F.softmax(self.headwise, dim=-2)
 
-        num_nodes = x.size(0)
-        teleportM = torch.sum(M, dim=0, keepdim=True) / num_nodes
-        teleportK = torch.sum(K, dim=0, keepdim=True) / num_nodes
-        teleportH = torch.einsum('nhi,nhij->nhj',[Q,teleportM])
-        teleportC = torch.einsum('nhi,nhi->nh',[Q,teleportK]).unsqueeze(-1) + self.cst
-        teleportH = teleportH / teleportC
-        teleportH = teleportH.sum(dim=-2)
+        if (self.global_attn):
+            num_nodes = x.size(0)
+            teleportM = torch.sum(M, dim=0, keepdim=True) / num_nodes
+            teleportK = torch.sum(K, dim=0, keepdim=True) / num_nodes
+            teleportH = torch.einsum('nhi,nhij->nhj',[Q,teleportM])
+            teleportC = torch.einsum('nhi,nhi->nh',[Q,teleportK]).unsqueeze(-1) + self.cst
+            teleportH = teleportH / teleportC
+            teleportH = teleportH.sum(dim=-2)
 
         for hop in range(self.K):
 
@@ -214,6 +218,7 @@ class MHPFGT(torch.nn.Module):
         else:
             hidden = hidden.sum(dim=-2)
     
-        hidden = hidden + self.teleport*teleportH
+        if (self.global_attn):
+            hidden = hidden + self.teleport*teleportH
 
         return hidden

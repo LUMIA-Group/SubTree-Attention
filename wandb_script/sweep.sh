@@ -1,1 +1,1 @@
-python wandb_script/sweep.py --entity=syhuang_sjtu --project=PFGNNTest --source=file --info=yamls/nagphormer/computers.yaml
+python wandb_script/sweep.py --entity=syhuang_sjtu --project=PFGNNTest --source=file --info=best_params_yamls/nagphormer/pubmed.yaml
