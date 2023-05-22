@@ -4,8 +4,8 @@ params_config:
 
   agent_package: [100]
   ignore_keys: [['seed','index_runs','index_split']]
-  save_model: [true]
-  model_dir: ["K_study_saved_models/"]
+  save_model: [false]
+  model_dir: ["exp/model/"]
 
   # configs for dataset
   exp_setting: ["setting_1"]
