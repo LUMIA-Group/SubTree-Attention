@@ -8,8 +8,8 @@ params_config:
   model_dir: ["exp/model/"]
 
   # configs for dataset
-  exp_setting: ["nagphormer"]
-  dataset: ["physics"]
+  exp_setting: ["setting_2"]
+  dataset: ["computers"]
   sub_dataset: [""] 
   data_dir: ["../data/"]
   train_prop: [.6]
@@ -18,9 +18,9 @@ params_config:
 
   # configs for model arch and training
   hidden_channels: [64]
-  dropout: [0.0,0.2,0.4,0.6]
-  lr: [0.001,0.01]
-  weight_decay: [0.0001,0.0005,0.001,0.005]
+  dropout: [0.4]
+  lr: [0.01]
+  weight_decay: [0.0001]
   epochs: [3000]
   eval_step: [1]
   log_freq: [1]
@@ -28,15 +28,15 @@ params_config:
   metric: ["acc"]
 
   # configs for PFGNN
-  K: [3,5,10]
+  K: [3]
   pe: [true]
   pe_dim: [3]
-  num_heads: [1,2,4]
-  multi_concat: [true,false]
+  num_heads: [4]
+  multi_concat: [true]
   ind_gamma: [true]
   gamma_softmax: [true]
-  aggr: ['random_walk_with_teleportation']
-
+  global_attn: [false]
+ 
   # configs for gnn baseline
   directed: [false]
 

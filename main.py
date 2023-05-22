@@ -12,7 +12,7 @@ from torch_geometric.utils import to_undirected
 from logger import Logger
 from dataset import load_dataset
 from data_utils import load_fixed_splits
-from pfgnn import PFGT, MHPFGT
+from stagnn import STAGNN, MSTAGNN
 from eval import evaluate, eval_acc, eval_rocauc, eval_f1
 
 
@@ -50,7 +50,7 @@ parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'rocauc
 parser.add_argument('--save_model', action='store_true',
                     help='whether to save model')
 parser.add_argument('--model_dir', type=str, default='exp/model/')
-parser.add_argument('--exp_setting', type=str, default='nagphormer')
+parser.add_argument('--exp_setting', type=str, default='setting_2')
 
 # hyper-parameter for model arch and training
 parser.add_argument('--hidden_channels', type=int, default=32)
@@ -95,19 +95,16 @@ if len(dataset.label.shape) == 1:
 dataset.label = dataset.label.to(device)
 
 # get the splits for all runs
-if (args.exp_setting == 'nodeformer'):
+if (args.exp_setting == 'setting_1'):
     if args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
         split_idx_lst = [dataset.load_fixed_splits()
                         for _ in range(args.runs)]
     split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
                     for _ in range(args.runs)]
-elif (args.exp_setting == 'nagphormer'):
-    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='nagphormer')
+elif (args.exp_setting == 'setting_2'):
+    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='setting_2')
                     for _ in range(args.runs)]
-elif (args.exp_setting == 'ANSGT'):
-    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='ANSGT')
-                    for _ in range(args.runs)]
-    
+
 
 # Get num_nodes and num_edges
 n = dataset.graph['num_nodes']
@@ -136,10 +133,10 @@ dataset.graph['edge_index'], dataset.graph['node_feat'] = \
 assert args.method == 'pfgnn'
 assert args.num_heads > 0
 if (args.num_heads == 1):
-    model = PFGT(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
+    model = STAGNN(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
                 dropout=args.dropout, K=args.K, global_attn=args.global_attn).to(device)
 else:
-    model = MHPFGT(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
+    model = MSTAGNN(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,
                 dropout=args.dropout, K=args.K, num_heads=args.num_heads,
                 ind_gamma=args.ind_gamma, gamma_softmax=args.gamma_softmax, multi_concat=args.multi_concat,
                 global_attn=args.global_attn).to(device)
@@ -168,16 +165,13 @@ print('MODEL:', model)
 
 # Training loop
 for run in range(args.runs):
-    if (args.exp_setting == 'nodeformer'):
+    if (args.exp_setting == 'setting_1'):
         if args.dataset in ['cora', 'citeseer', 'pubmed']:
             split_idx = split_idx_lst[0]
         else:
             split_idx = split_idx_lst[run]
-    elif (args.exp_setting == 'nagphormer'):
-        print('using nagphormer exp setting !')
-        split_idx = split_idx_lst[run]
-    elif (args.exp_setting == 'ANSGT'):
-        print('using ANSGT exp setting !')
+    elif (args.exp_setting == 'setting_2'):
+        print('using setting_2 exp setting !')
         split_idx = split_idx_lst[run]
     train_idx = split_idx['train'].to(device)
     model.reset_parameters()

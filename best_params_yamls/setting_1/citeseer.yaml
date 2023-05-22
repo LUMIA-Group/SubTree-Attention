@@ -8,8 +8,8 @@ params_config:
   model_dir: ["exp/model/"]
 
   # configs for dataset
-  exp_setting: ["nodeformer"]
-  dataset: ["film"]
+  exp_setting: ["setting_1"]
+  dataset: ["citeseer"]
   sub_dataset: [""] 
   data_dir: ["../data/"]
   train_prop: [.5]
@@ -18,9 +18,9 @@ params_config:
 
   # configs for model arch and training
   hidden_channels: [64]
-  dropout: [0.0]
-  lr: [0.001]
-  weight_decay: [0.005]
+  dropout: [0.6]
+  lr: [0.01]
+  weight_decay: [0.0001]
   epochs: [3000]
   eval_step: [1]
   log_freq: [1]
@@ -31,8 +31,8 @@ params_config:
   K: [3]
   pe: [true]
   pe_dim: [3]
-  num_heads: [4]
-  multi_concat: [true]
+  num_heads: [2]
+  multi_concat: [false]
   ind_gamma: [true]
   gamma_softmax: [true]
   global_attn: [false]

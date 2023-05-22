@@ -5,12 +5,12 @@ import torch.nn.functional as F
 import numpy as np
 from torch_geometric.utils import degree
 
-from pfprop import MessageProp_random_walk, KeyProp_random_walk
+from staprop import MessageProp_random_walk, KeyProp_random_walk
 
 
-class PFGT(torch.nn.Module):
+class STAGNN(torch.nn.Module):
     def __init__(self, num_features, num_classes, hidden_channels, dropout, K, global_attn):
-        super(PFGT, self).__init__()
+        super(STAGNN, self).__init__()
         self.input_trans = Linear(num_features, hidden_channels)
         self.linQ = Linear(hidden_channels, hidden_channels)
         self.linK = Linear(hidden_channels, hidden_channels)
@@ -93,9 +93,9 @@ class PFGT(torch.nn.Module):
         return hidden
 
 
-class MHPFGT(torch.nn.Module):
+class MSTAGNN(torch.nn.Module):
     def __init__(self, num_features, num_classes, hidden_channels, dropout, K, num_heads, ind_gamma, gamma_softmax, multi_concat, global_attn):
-        super(MHPFGT, self).__init__()
+        super(MSTAGNN, self).__init__()
         self.headc = headc = hidden_channels // num_heads
         self.input_trans = Linear(num_features, hidden_channels)
         self.linQ = Linear(hidden_channels, headc * num_heads)

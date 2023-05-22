@@ -9,5 +9,5 @@ random.seed(42)
 
 for dataset in ['cora','citeseer', 'film', 'deezer-europe']:
     # Create split_idx_lst
-    exp_setting = 'nodeformer'
+    exp_setting = 'setting_1'
     create_split_idx_lst(exp_setting, dataset)

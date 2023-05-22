@@ -5,9 +5,9 @@ sys.path.append(os.path.realpath('.'))
 import random
 from dataset import create_split_idx_lst
 
-random.seed(2022)
+random.seed(3407)
 
-for dataset in ['cora', 'citeseer', 'pubmed', 'chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin']:
+for dataset in ['pubmed','corafull', 'cs', 'physics','computers','photo']:
     # Create split_idx_lst
-    exp_setting = 'ANSGT'
+    exp_setting = 'setting_2'
     create_split_idx_lst(exp_setting, dataset)

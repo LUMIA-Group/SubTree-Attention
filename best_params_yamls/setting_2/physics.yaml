@@ -4,23 +4,23 @@ params_config:
 
   agent_package: [100]
   ignore_keys: [['seed','index_runs','index_split']]
-  save_models: [true]
-  model_dir: ["K_study_saved_models/"]
+  save_model: [false]
+  model_dir: ["exp/model/"]
 
   # configs for dataset
-  exp_setting: ["nodeformer"]
-  dataset: ["cora"]
+  exp_setting: ["setting_2"]
+  dataset: ["physics"]
   sub_dataset: [""] 
   data_dir: ["../data/"]
-  train_prop: [.5]
-  valid_prop: [.25]
+  train_prop: [.6]
+  valid_prop: [.2]
   rand_split: [true]
 
   # configs for model arch and training
   hidden_channels: [64]
-  dropout: [0.6]
+  dropout: [0.4]
   lr: [0.01]
-  weight_decay: [0.0001]
+  weight_decay: [0.00005]
   epochs: [3000]
   eval_step: [1]
   log_freq: [1]
@@ -28,21 +28,21 @@ params_config:
   metric: ["acc"]
 
   # configs for PFGNN
-  K: [10]
+  K: [3]
   pe: [true]
   pe_dim: [3]
-  num_heads: [4]
-  multi_concat: [true]
+  num_heads: [8]
+  multi_concat: [false]
   ind_gamma: [true]
   gamma_softmax: [true]
   global_attn: [false]
-
+ 
   # configs for gnn baseline
   directed: [false]
 
   # configs for seed and number of runs
-  seed: [42]
-  num_runs: [5]
+  seed: [3047]
+  num_runs: [10]
 
 sweep_config:
   method: "grid"

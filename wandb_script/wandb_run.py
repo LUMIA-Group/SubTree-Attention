@@ -17,7 +17,7 @@ from torch_geometric.utils import to_undirected
 
 from dataset import load_dataset
 from data_utils import load_fixed_splits
-from pfgnn import PFGT, MHPFGT
+from stagnn import STAGNN, MSTAGNN
 from eval import evaluate, eval_acc, eval_rocauc, eval_f1
 
 
@@ -89,7 +89,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         rand_split_path = '{}splits/{}/rand_split/{}'.format(params['data_dir'], params['exp_setting'], params['dataset'])
 
         # get the splits for all runs
-        if (params['exp_setting'] == 'nodeformer'):
+        if (params['exp_setting'] == 'setting_1'):
             if params['rand_split']:
                 target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
                 assert os.path.exists(target_rand_split_path)
@@ -97,8 +97,8 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
             elif params['dataset'] in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
                 split_idx_lst = [dataset.load_fixed_splits()
                                 for _ in range(params["num_runs"])]
-        elif (params['exp_setting'] == 'nagphormer'):
-            print('using nagphormer exp setting !')
+        elif (params['exp_setting'] == 'setting_2'):
+            print('using setting_2 exp setting !')
             target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
             assert os.path.exists(target_rand_split_path)
             split_idx_lst = torch.load(target_rand_split_path)
@@ -128,10 +128,10 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         assert params['method'] == 'pfgnn'
         assert params['num_heads'] > 0
         if (params['num_heads'] == 1):
-            model = PFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
+            model = STAGNN(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
                         dropout=params['dropout'], K=params['K'], global_attn=params['global_attn']).to(device)
         else:
-            model = MHPFGT(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
+            model = MSTAGNN(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
                         dropout=params['dropout'], K=params['K'], num_heads=params['num_heads'],
                         ind_gamma=params['ind_gamma'], gamma_softmax=params['gamma_softmax'], 
                         multi_concat=params['multi_concat'], global_attn=params['global_attn']).to(device)
@@ -160,12 +160,12 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
 
         run = params['runs']
 
-        if (params['exp_setting'] == 'nodeformer'):
+        if (params['exp_setting'] == 'setting_1'):
             if params['dataset'] in ['cora', 'citeseer', 'pubmed']:
                 split_idx = split_idx_lst[0]
             else:
                 split_idx = split_idx_lst[run]
-        elif (params['exp_setting'] == 'nagphormer'):
+        elif (params['exp_setting'] == 'setting_2'):
             split_idx = split_idx_lst[run]
         elif (params['exp_setting'] == 'ANSGT'):
             print('using ANSGT exp setting !')

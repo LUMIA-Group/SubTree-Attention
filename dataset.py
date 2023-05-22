@@ -78,7 +78,7 @@ class NCDataset(object):
             split_idx = {'train': train_idx,
                          'valid': valid_idx,
                          'test': test_idx}
-        elif split_type == 'nagphormer':
+        elif split_type == 'setting_2':
             ignore_negative = False if self.name == 'ogbn-proteins' else True
             train_idx, valid_idx, test_idx = rand_train_test_idx_602020(self.label, train_prop=.6, valid_prop=.2, ignore_negative=ignore_negative)
             split_idx = {'train': train_idx,
@@ -98,7 +98,8 @@ class NCDataset(object):
 
 
 def load_dataset(data_dir, dataname, exp_setting, pe, pe_dim, sub_dataname=''):
-    assert exp_setting in ('nodeformer', 'nagphormer', 'ANSGT')
+    # print(f'experiment settings: {exp_setting}')
+    assert exp_setting in ('setting_1', 'setting_2')
     if dataname in ('cora', 'citeseer', 'pubmed'):
         dataset = load_planetoid_dataset(data_dir, dataname)
     elif dataname in ('chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin'):
@@ -412,7 +413,7 @@ def load_geom_gcn_dataset(data_dir, name):
 
 def create_split_idx_lst(exp_setting, yaml_file):
 
-    dict_yaml = yaml.load(open(f'yamls/{exp_setting}/{yaml_file}.yaml').read(), Loader=yaml.Loader)['params_config']
+    dict_yaml = yaml.load(open(f'best_params_yamls/{exp_setting}/{yaml_file}.yaml').read(), Loader=yaml.Loader)['params_config']
     dict_yaml = {k:v[0] for k,v in dict_yaml.items()}
 
     args = Namespace(**dict_yaml)
@@ -423,20 +424,16 @@ def create_split_idx_lst(exp_setting, yaml_file):
     # get the splits for all runs
     assert args.rand_split or args.rand_split_class
 
-    if (args.exp_setting == 'nodeformer'):
-        print(f'using nodeformer split for {args.dataset}')
+    if (args.exp_setting == 'setting_1'):
+        print(f'using setting_1 split for {args.dataset}')
         if args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
             split_idx_lst = [dataset.load_fixed_splits()
                             for _ in range(args.num_runs)]
         split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
                         for _ in range(args.num_runs)]
-    elif (args.exp_setting == 'nagphormer'):
-        print(f'using nagphormer split for {args.dataset}')
-        split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='nagphormer')
-                        for _ in range(args.num_runs)]
-    elif (args.exp_setting == 'ANSGT'):
-        print(f'using ANSGT split for {args.dataset}')
-        split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='ANSGT')
+    elif (args.exp_setting == 'setting_2'):
+        print(f'using setting_2 split for {args.dataset}')
+        split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='setting_2')
                         for _ in range(args.num_runs)]
 
     rand_split_path = '{}splits/{}/rand_split/{}'.format(args.data_dir, args.exp_setting, args.dataset)

@@ -8,8 +8,8 @@ params_config:
   model_dir: ["exp/model/"]
 
   # configs for dataset
-  exp_setting: ["nodeformer"]
-  dataset: ["deezer-europe"]
+  exp_setting: ["setting_1"]
+  dataset: ["film"]
   sub_dataset: [""] 
   data_dir: ["../data/"]
   train_prop: [.5]
@@ -19,19 +19,19 @@ params_config:
   # configs for model arch and training
   hidden_channels: [64]
   dropout: [0.0]
-  lr: [0.01]
+  lr: [0.001]
   weight_decay: [0.005]
   epochs: [3000]
   eval_step: [1]
   log_freq: [1]
   patience: [200]
-  metric: ["rocauc"]
+  metric: ["acc"]
 
   # configs for PFGNN
   K: [3]
   pe: [true]
   pe_dim: [3]
-  num_heads: [2]
+  num_heads: [4]
   multi_concat: [true]
   ind_gamma: [true]
   gamma_softmax: [true]

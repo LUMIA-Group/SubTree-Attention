@@ -8,8 +8,8 @@ params_config:
   model_dir: ["exp/model/"]
 
   # configs for dataset
-  exp_setting: ["nagphormer"]
-  dataset: ["pubmed"]
+  exp_setting: ["setting_2"]
+  dataset: ["photo"]
   sub_dataset: [""] 
   data_dir: ["../data/"]
   train_prop: [.6]
@@ -18,9 +18,9 @@ params_config:
 
   # configs for model arch and training
   hidden_channels: [64]
-  dropout: [0.2]
+  dropout: [0.4]
   lr: [0.01]
-  weight_decay: [0.0005]
+  weight_decay: [0.00005]
   epochs: [3000]
   eval_step: [1]
   log_freq: [1]
@@ -31,12 +31,12 @@ params_config:
   K: [3]
   pe: [true]
   pe_dim: [3]
-  num_heads: [4]
-  multi_concat: [true]
+  num_heads: [8]
+  multi_concat: [false]
   ind_gamma: [true]
   gamma_softmax: [true]
   global_attn: [false]
-  
+ 
   # configs for gnn baseline
   directed: [false]
 
