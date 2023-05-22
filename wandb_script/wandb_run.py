@@ -94,9 +94,6 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
                 target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
                 assert os.path.exists(target_rand_split_path)
                 split_idx_lst = torch.load(target_rand_split_path)
-            elif params['dataset'] in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
-                split_idx_lst = [dataset.load_fixed_splits()
-                                for _ in range(params["num_runs"])]
         elif (params['exp_setting'] == 'setting_2'):
             print('using setting_2 exp setting !')
             target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
@@ -116,7 +113,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
         d = dataset.graph['node_feat'].shape[1]
 
         # Whether or not to symmetrize
-        if not params['directed'] and params['dataset'] != 'ogbn-proteins':
+        if not params['directed']:
             dataset.graph['edge_index'] = to_undirected(dataset.graph['edge_index'])
 
         # Transfer input to selected device
@@ -138,7 +135,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
 
 
         ### Loss function (Single-class, Multi-class) ###
-        if params['dataset'] in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
+        if params['dataset'] in ('deezer-europe'):
             criterion = nn.BCEWithLogitsLoss()
         else:
             criterion = nn.NLLLoss()
@@ -196,7 +193,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
             
             out = model(dataset)
 
-            if params['dataset'] in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
+            if params['dataset'] in ('deezer-europe'):
                 if dataset.label.shape[1] == 1:
                     true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
                 else:
