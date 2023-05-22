@@ -96,9 +96,6 @@ dataset.label = dataset.label.to(device)
 
 # get the splits for all runs
 if (args.exp_setting == 'setting_1'):
-    if args.dataset in ['ogbn-proteins', 'ogbn-arxiv', 'ogbn-products', 'amazon2m']:
-        split_idx_lst = [dataset.load_fixed_splits()
-                        for _ in range(args.runs)]
     split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
                     for _ in range(args.runs)]
 elif (args.exp_setting == 'setting_2'):
@@ -121,7 +118,7 @@ print()
 print(f"exp_setting {args.exp_setting}")
 
 # Whether or not to symmetrize
-if not args.directed and args.dataset != 'ogbn-proteins':
+if not args.directed:
     dataset.graph['edge_index'] = to_undirected(dataset.graph['edge_index'])
 
 # Transfer input to selected device
@@ -142,7 +139,7 @@ else:
                 global_attn=args.global_attn).to(device)
 
 ### Loss function (Single-class, Multi-class) ###
-if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
+if args.dataset in ('deezer-europe'):
     criterion = nn.BCEWithLogitsLoss()
 else:
     criterion = nn.NLLLoss()
@@ -198,7 +195,7 @@ for run in range(args.runs):
         out = model(dataset)
     
 
-        if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
+        if args.dataset in ('deezer-europe'):
             if dataset.label.shape[1] == 1:
                 true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
             else:
