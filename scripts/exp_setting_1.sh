@@ -1,3 +1,5 @@
+'''keep the same seed as https://github.com/qitianwu/NodeFormer'''
+
 python main.py --dataset citeseer --metric acc --num_heads 2 --lr 0.01 --multi_concat \
 --dropout 0.6 --weight_decay 0.0001 --K 3 --runs 5 --device 0 --seed 42 --exp_setting setting_1
 

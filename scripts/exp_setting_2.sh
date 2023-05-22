@@ -1,3 +1,5 @@
+'''keep the same seed as https://github.com/jhl-hust/nagphormer'''
+
 python main.py --dataset pubmed --metric acc --num_heads 4 --lr 0.01 \
 --dropout 0.2 --weight_decay 0.0005 --K 3 --runs 10 --device 0 --seed 3047 --exp_setting setting_2
 
