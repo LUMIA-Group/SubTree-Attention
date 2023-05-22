@@ -122,7 +122,7 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
                 device), dataset.graph['node_feat'].to(device)
         
         # Load model
-        assert params['method'] == 'pfgnn'
+        assert params['method'] == 'stagnn'
         assert params['num_heads'] > 0
         if (params['num_heads'] == 1):
             model = STAGNN(num_features=d, num_classes=c, hidden_channels=params['hidden_channels'],
