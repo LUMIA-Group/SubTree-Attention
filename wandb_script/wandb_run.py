@@ -99,10 +99,6 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
             target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
             assert os.path.exists(target_rand_split_path)
             split_idx_lst = torch.load(target_rand_split_path)
-        elif (params['exp_setting'] == 'ANSGT'):
-                target_rand_split_path = os.path.join(rand_split_path,f'{params["num_runs"]}run_{params["seed"]}seed_split_idx_lst.pt')
-                assert os.path.exists(target_rand_split_path)
-                split_idx_lst = torch.load(target_rand_split_path)
 
         # Get num_nodes and num_edges
         n = dataset.graph['num_nodes']
@@ -163,9 +159,6 @@ def runner(wandb_base, sweep_id, gpu_index, code_fullname, save_model):
             else:
                 split_idx = split_idx_lst[run]
         elif (params['exp_setting'] == 'setting_2'):
-            split_idx = split_idx_lst[run]
-        elif (params['exp_setting'] == 'ANSGT'):
-            print('using ANSGT exp setting !')
             split_idx = split_idx_lst[run]
 
         train_idx = split_idx['train'].to(device)

@@ -1,2 +1,0 @@
-python main.py --dataset citeseer --rand_split --metric acc --method stagnn --num_heads 2 --lr 0.01 --ind_gamma --gamma_softmax --pe --pe_dim 3 \
---train_prop 0.5 --valid_prop 0.25 --dropout 0.6 --weight_decay 0.0001 --hidden_channels 64 --K 3 --runs 1 --epochs 3000 --device 0 --seed 42 --exp_setting setting_1

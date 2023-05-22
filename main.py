@@ -34,7 +34,7 @@ parser.add_argument('--sub_dataset', type=str, default='')
 parser.add_argument('--data_dir', type=str, default='../data/')
 parser.add_argument('--device', type=int, default=0)
 parser.add_argument('--seed', type=int, default=3407)
-parser.add_argument('--epochs', type=int, default=2000)
+parser.add_argument('--epochs', type=int, default=3000)
 parser.add_argument('--eval_step', type=int, default=1)
 parser.add_argument('--patience', type=int, default=200)
 parser.add_argument('--cpu', action='store_true')
@@ -43,7 +43,7 @@ parser.add_argument('--train_prop', type=float, default=.6,
                     help='training label proportion')
 parser.add_argument('--valid_prop', type=float, default=.2,
                     help='validation label proportion')
-parser.add_argument('--rand_split', action='store_true',
+parser.add_argument('--rand_split', action='store_false',
                     help='use random splits')
 parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'rocauc', 'f1'],
                     help='evaluation metric')
@@ -53,19 +53,19 @@ parser.add_argument('--model_dir', type=str, default='exp/model/')
 parser.add_argument('--exp_setting', type=str, default='setting_2')
 
 # hyper-parameter for model arch and training
-parser.add_argument('--hidden_channels', type=int, default=32)
+parser.add_argument('--hidden_channels', type=int, default=64)
 parser.add_argument('--dropout', type=float, default=0.0)
 parser.add_argument('--lr', type=float, default=0.01)
 parser.add_argument('--weight_decay', type=float, default=5e-3)
 
 # hyper-parameter for stagnn
 parser.add_argument('--K', type=int, default=3)
-parser.add_argument('--pe', action='store_true')
+parser.add_argument('--pe', action='store_false')
 parser.add_argument('--pe_dim', type=int, default=3)
 parser.add_argument('--num_heads', type=int, default=1)
-parser.add_argument('--multi_concat', action='store_true')
-parser.add_argument('--ind_gamma', action='store_true')
-parser.add_argument('--gamma_softmax', action='store_true')
+parser.add_argument('--multi_concat', action='store_false')
+parser.add_argument('--ind_gamma', action='store_false')
+parser.add_argument('--gamma_softmax', action='store_false')
 parser.add_argument('--global_attn', action='store_true')
 
 # hyper-parameter for gnn baseline
@@ -94,14 +94,18 @@ if len(dataset.label.shape) == 1:
     dataset.label = dataset.label.unsqueeze(1)
 dataset.label = dataset.label.to(device)
 
+rand_split_path = '{}splits/{}/rand_split/{}'.format(args.data_dir, args.exp_setting, args.dataset)
+
 # get the splits for all runs
 if (args.exp_setting == 'setting_1'):
-    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop)
-                    for _ in range(args.runs)]
+        target_rand_split_path = os.path.join(rand_split_path,f'{args.runs}run_{args.seed}seed_split_idx_lst.pt')
+        print(f"{target_rand_split_path}")
+        assert os.path.exists(target_rand_split_path)
+        split_idx_lst = torch.load(target_rand_split_path)
 elif (args.exp_setting == 'setting_2'):
-    split_idx_lst = [dataset.get_idx_split(train_prop=args.train_prop, valid_prop=args.valid_prop, split_type='setting_2')
-                    for _ in range(args.runs)]
-
+        target_rand_split_path = os.path.join(rand_split_path,f'{args.runs}run_{args.seed}seed_split_idx_lst.pt')
+        assert os.path.exists(target_rand_split_path)
+        split_idx_lst = torch.load(target_rand_split_path)
 
 # Get num_nodes and num_edges
 n = dataset.graph['num_nodes']
