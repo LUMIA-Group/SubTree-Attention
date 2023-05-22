@@ -26,9 +26,9 @@ def fixSeed(seed):
 
 
 # Parser - add_argument
-parser = argparse.ArgumentParser(description='PFGNN')
+parser = argparse.ArgumentParser(description='stagnn')
 
-parser.add_argument('--method', '-m', type=str, default='pfgnn')
+parser.add_argument('--method', '-m', type=str, default='stagnn')
 parser.add_argument('--dataset', type=str, default='cora')
 parser.add_argument('--sub_dataset', type=str, default='')
 parser.add_argument('--data_dir', type=str, default='../data/')
@@ -58,7 +58,7 @@ parser.add_argument('--dropout', type=float, default=0.0)
 parser.add_argument('--lr', type=float, default=0.01)
 parser.add_argument('--weight_decay', type=float, default=5e-3)
 
-# hyper-parameter for PFGNN
+# hyper-parameter for stagnn
 parser.add_argument('--K', type=int, default=3)
 parser.add_argument('--pe', action='store_true')
 parser.add_argument('--pe_dim', type=int, default=3)
@@ -127,7 +127,7 @@ dataset.graph['edge_index'], dataset.graph['node_feat'] = \
         device), dataset.graph['node_feat'].to(device)
 
 # Load model
-assert args.method == 'pfgnn'
+assert args.method == 'stagnn'
 assert args.num_heads > 0
 if (args.num_heads == 1):
     model = STAGNN(num_features=d, num_classes=c, hidden_channels=args.hidden_channels,

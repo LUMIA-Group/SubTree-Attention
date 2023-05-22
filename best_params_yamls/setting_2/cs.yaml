@@ -1,6 +1,6 @@
 params_config:
   # general configs
-  method: ["pfgnn"] 
+  method: ["stagnn"] 
 
   agent_package: [100]
   ignore_keys: [['seed','index_runs','index_split']]
@@ -27,7 +27,7 @@ params_config:
   patience: [200]
   metric: ["acc"]
 
-  # configs for PFGNN
+  # configs for stagnn
   K: [3]
   pe: [true]
   pe_dim: [3]
