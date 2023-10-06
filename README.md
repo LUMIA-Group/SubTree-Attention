@@ -17,6 +17,7 @@ In this repository, you'll find the requisite code to reproduce the empirical re
 
 The following list presents the versions of the packages used in our experiments.
 
+```
 python==3.7.12
 pytorch==1.8.0
 torch_geometric==2.0.1
@@ -25,6 +26,7 @@ torch_scatter==2.1.1
 torch_cluster==1.6.1
 torch_spline_conv==1.2.2
 wandb==0.12.16
+```
 
 ---
 
