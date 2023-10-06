@@ -32,6 +32,18 @@ wandb==0.12.16
 
 Please unzip data.zip first and put the unzipped data folder in the parent directory of this folder.
 
+```
+parent directory
+├── data
+│   ├── Amazon
+│   └── Citation_Full
+│   └── ...
+└── SubTree-Attention
+    ├── best_params_yamls
+    └── scripts
+    └── ...
+```
+
 ---
 
 **Option 1: Using Provided Scripts**
