@@ -2,7 +2,7 @@
 
 The official implementation for **"Tailoring Self-Attention for Graph via Rooted Subtrees"** which is accepted to NeurIPS2023 as a poster.
 
-Related materials: [[openreview](https://openreview.net/forum?id=t2hEZadBBk&referrer=%5Bthe%20profile%20of%20Siyuan%20Huang%5D(%2Fprofile%3Fid%3D~Siyuan_Huang8))]
+Related materials: [[arxiv](https://arxiv.org/abs/2310.05296)]
 
 ---
 
