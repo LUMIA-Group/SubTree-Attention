@@ -1,23 +1,30 @@
-# SubTree Attention Graph Neural Network Source Code
+# SubTree Attention Graph Neural Network
 
-The official implementation for **"Tailoring Self-Attention for Graph via Rooted Subtrees"** which is accepted to NeurIPS2023 as a poster.
+Official implementation for "Tailoring Self-Attention for Graph via Rooted Subtrees," accepted as a poster at NeurIPS 2023.
 
-Related materials: [[arxiv](https://arxiv.org/abs/2310.05296)]
+**Related Material:** [Read the paper on arXiv](https://arxiv.org/abs/2310.05296)
 
----
 
-In this repository, you'll find the requisite code to reproduce the empirical results in our research paper. There are two methods available to operate this code:
 
-1. Utilizing Weights & Biases (WandB), which is our recommended approach.
-2. Executing directly through provided scripts.
+## Introduction
 
----
+Attention mechanisms have made significant strides in graph learning, yet they still exhibit notable limitations: local attention faces challenges in capturing long-range information due to the inherent problems of the message-passing scheme, while global attention cannot reflect the hierarchical neighborhood structure and fails to capture fine-grained local information. In this paper, we propose a novel multi-hop graph attention mechanism, named Subtree Attention (STA), to address the aforementioned issues. STA seamlessly bridges the fully-attentional structure and the rooted subtree, with theoretical proof that STA approximates the global attention under extreme settings. By allowing direct computation of attention weights among multi-hop neighbors, STA mitigates the inherent problems in existing graph attention mechanisms. Further we devise an efficient form for STA by employing kernelized softmax, which yields a linear time complexity. Our resulting GNN architecture, the STAGNN, presents a simple yet performant STA-based graph neural network leveraging a hop-aware attention strategy. Comprehensive evaluations on ten node classification datasets demonstrate that STA-based models outperform existing graph transformers and mainstream GNNs.
 
-**Dependencies**
+![SubTree Attention](figs/STA.png)
 
-The following list presents the versions of the packages used in our experiments.
+## Repository Contents
 
-```
+This repository contains all necessary code to replicate the empirical results presented in our research paper.
+
+**Execution Methods:**
+1. **Weights & Biases (WandB)**: Recommended for tracking experiments.
+2. **Direct Script Execution**: For immediate local running.
+
+## Dependencies
+
+Ensure your environment is set up with the following versions:
+
+```plaintext
 python==3.7.12
 pytorch==1.8.0
 torch_geometric==2.0.1
@@ -28,71 +35,55 @@ torch_spline_conv==1.2.2
 wandb==0.12.16
 ```
 
----
+## Data Preparation
 
-**Preparing data**
-
-Please unzip data.zip first and put the unzipped data folder in the parent directory of this folder.
+Unzip `data.zip` into the parent directory as outlined below:
 
 ```
-parent directory
-├── data
-│   ├── Amazon
-│   └── Citation_Full
+parent directory/
+├── data/
+│   ├── Amazon/
+│   ├── Citation_Full/
 │   └── ...
-└── SubTree-Attention
-    ├── best_params_yamls
-    └── scripts
+└── SubTree-Attention/
+    ├── best_params_yamls/
+    ├── scripts/
     └── ...
 ```
 
----
+## Execution Instructions
 
-**Option 1: Using Provided Scripts**
-We also provide script files that can be run directly.     For CiteSeer, Cora, Deezer-Europe and Film, please use `scripts/exp_setting_1.sh`. For Computers, CoraFull, CS, Photo, Physics and Pubmed, please use `best_params_yamls/scripts/exp_setting_2.sh`.
+### Option 1: Using Provided Scripts
 
----
+For different datasets, use the respective script files:
 
-**Option 2: Using Weights & Biases**
+- **Datasets**: CiteSeer, Cora, Deezer-Europe, Film
+  - **Script**: `scripts/exp_setting_1.sh`
+- **Datasets**: Computers, CoraFull, CS, Photo, Physics, Pubmed
+  - **Script**: `best_params_yamls/scripts/exp_setting_2.sh`
 
-1. **Setup:**
-   Initially, create the `configs` and `remote` folders within the root directory. These will be used to store wandb files.
-2. **Initiating Sweep:**
-   We provide the hyperparameters for each dataset within the `best_params_yamls` folder. You can use them to create a sweep. Make sure to specify your wandb username and project name when doing so.
+### Option 2: Using Weights & Biases
 
-   For CiteSeer, Cora, Deezer-Europe and Film, please use yamls in `best_params_yamls/setting_1`. For Computers, CoraFull, CS, Photo, Physics and Pubmed, please use yamls in `best_params_yamls/setting_2`.
-
-   Here's an example command:
-
-   ```
+1. **Setup**:
+   Create `configs` and `remote` folders to store WandB configuration files.
+2. **Initiating Sweep**:
+   Start a parameter sweep using hyperparameters from `best_params_yamls`. Replace placeholders with your WandB details.
+   
+   Example command:
+   ```bash
    python sweep.py --entity=$YOUR_WANDB_ENTITY$ --project=$YOUR_WANDB_PROJECT$ --source=file --info=best_params_yamls/setting_1/citeseer.yaml
    ```
-   Please replace `$YOUR_WANDB_ENTITY$` and `$YOUR_WANDB_PROJECT$` with your wandb username and project name respectively.
-3. **Initiating Agent:**
-   Once you run the above command, you will receive a sweep ID `$SWEEP_ID$` and sweep URL `$SWEEP_URL$`, similar to the example shown below:
-
-   ```
-   Create sweep with ID: $SWEEP_ID$
-   Sweep URL: $SWEEP_URL$
-   ```
-   You can now choose to run the program in single process mode or in parallel.
-
-   - For single process execution, use the following command:
-
-   ```
+3. **Initiating Agent**:
+   Launch the agent using the received sweep ID and URL. Execute in single or parallel modes as needed:
+   
+   Single Process:
+   ```bash
    python agents.py --entity=$YOUR_WANDB_ENTITY$ --project=$YOUR_WANDB_PROJECT$ --sweep_id=$SWEEP_ID$ --gpu_allocate=$INDEX_GPU$:1 --wandb_base=remote --mode=one-by-one --save_model=False
    ```
-   - For parallel execution, use the command below:
-
-   ```
+   
+   Parallel Execution:
+   ```bash
    python agents.py --entity=$YOUR_WANDB_ENTITY$ --project=$YOUR_WANDB_PROJECT$ --sweep_id=$SWEEP_ID$ --gpu_allocate=$INDEX_GPU$:$PARALLEL_RUNS$ --wandb_base=temp --mode=parallel --save_model=False
    ```
-   Here, the parameter `$INDEX_GPU$:$PARALLEL_RUNS$` specifies that `$PARALLEL_RUNS$` will run concurrently on GPU `$INDEX_GPU$`. In multi-process mode, you can link multiple GPUs to distribute tasks concurrently using `-`.
-
-   For instance:
-
-   ```
-   python agents.py --entity=$YOUR_WANDB_ENTITY$ --project=$YOUR_WANDB_PROJECT$ --sweep_id=$SWEEP_ID$ --gpu_allocate=$INDEX_GPU_1$:$PARALLEL_RUNS$-$INDEX_GPU_2$:$PARALLEL_RUNS$ --wandb_base=temp --mode=parallel --save_model=False
-   ```
-4. **Results Evaluation:**
-   The outcomes of your experiment can be viewed at the `$SWEEP_URL$`, which is a webpage hosted on [wandb.ai](https://wandb.ai).
+4. **Results Evaluation**:
+   View experiment results at the provided `$SWEEP_URL$` on [wandb.ai](https://wandb.ai).
